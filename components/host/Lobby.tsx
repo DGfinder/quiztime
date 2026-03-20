@@ -1,6 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 
 interface LobbyPlayer {
@@ -32,6 +34,30 @@ export default function Lobby({
   onStart,
   canStart,
 }: LobbyProps) {
+  const reduced = useReducedMotion();
+  const [countPulse, setCountPulse] = useState(false);
+  const [joinedToast, setJoinedToast] = useState<string | null>(null);
+  const prevCountRef = useRef(players.length);
+
+  // Detect new player joins
+  useEffect(() => {
+    if (players.length > prevCountRef.current) {
+      const newPlayer = players[players.length - 1];
+      if (newPlayer) {
+        setJoinedToast(newPlayer.name);
+        setCountPulse(true);
+        const toastTimer = setTimeout(() => setJoinedToast(null), 1500);
+        const pulseTimer = setTimeout(() => setCountPulse(false), 300);
+        prevCountRef.current = players.length;
+        return () => {
+          clearTimeout(toastTimer);
+          clearTimeout(pulseTimer);
+        };
+      }
+    }
+    prevCountRef.current = players.length;
+  }, [players.length, players]);
+
   return (
     <div className="bg-surface text-on-surface min-h-screen overflow-hidden flex flex-col">
       {/* Top Nav */}
@@ -51,14 +77,22 @@ export default function Lobby({
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full">
+          <motion.div
+            animate={
+              !reduced && countPulse
+                ? { scale: [1, 1.3, 1] }
+                : { scale: 1 }
+            }
+            transition={{ duration: 0.3 }}
+            className="flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full"
+          >
             <span className="material-symbols-outlined text-primary text-sm">
               group
             </span>
             <span className="text-sm font-bold text-primary">
               {players.length} player{players.length !== 1 ? "s" : ""} joined
             </span>
-          </div>
+          </motion.div>
         </div>
       </header>
 
@@ -114,19 +148,19 @@ export default function Lobby({
             </div>
 
             {/* Player Grid */}
-            <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-2">
+            <div className="grid grid-cols-2 gap-3 overflow-y-auto pr-2 relative">
               {players.map((player, idx) => (
                 <motion.div
                   key={`${player.name}-${idx}`}
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={reduced ? undefined : { opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{
-                    delay: idx * 0.06,
+                    delay: idx * 0.05,
                     type: "spring",
-                    stiffness: 350,
+                    stiffness: 300,
                     damping: 20,
                   }}
-                  className="bg-surface-container-lowest p-4 rounded-lg flex items-center gap-3 shadow-[0px_10px_20px_rgba(27,43,94,0.03)] border-b-2 border-transparent hover:border-primary transition-all"
+                  className="bg-surface-container-lowest p-4 rounded-lg flex items-center gap-3 shadow-[0px_10px_20px_rgba(27,43,94,0.03)] border-b-2 border-transparent hover:border-primary transition-all relative"
                 >
                   <div className="text-2xl">
                     {emojiAvatars[idx % emojiAvatars.length]}
@@ -136,6 +170,21 @@ export default function Lobby({
                   </span>
                 </motion.div>
               ))}
+
+              {/* Joined toast */}
+              <AnimatePresence>
+                {joinedToast && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute -bottom-1 right-2 bg-primary text-on-primary text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg z-10"
+                  >
+                    {joinedToast} joined!
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Fade overlay */}

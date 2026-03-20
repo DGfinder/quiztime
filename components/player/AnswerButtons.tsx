@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { Question } from "@/types/quiz";
 
 interface AnswerButtonsProps {
@@ -9,6 +10,8 @@ interface AnswerButtonsProps {
   onAnswer: (answer: string) => void;
   disabled: boolean;
   lockedAnswer?: string | null;
+  isRevealed?: boolean;
+  correctAnswer?: string;
 }
 
 const buttonStyles = [
@@ -18,16 +21,24 @@ const buttonStyles = [
   { bg: "bg-[#8594CD]", text: "text-white", label: "D" },
 ];
 
+const shakeAnimation = {
+  x: [0, -4, 4, -4, 0],
+  transition: { duration: 0.4, ease: "easeInOut" as const },
+};
+
 export default function AnswerButtons({
   question,
   onAnswer,
   disabled,
   lockedAnswer,
+  isRevealed,
+  correctAnswer,
 }: AnswerButtonsProps) {
   const [sliderValue, setSliderValue] = useState(
     question.slider_min ?? 0
   );
   const [typeInValue, setTypeInValue] = useState("");
+  const reduced = useReducedMotion();
 
   const isLockedIn = lockedAnswer != null;
 
@@ -49,17 +60,51 @@ export default function AnswerButtons({
             const style = buttonStyles[index] ?? buttonStyles[0];
             const isSelected = isLockedIn && lockedAnswer === option;
             const isFaded = isLockedIn && lockedAnswer !== option;
+            const isCorrectOption = isRevealed && option === correctAnswer;
+            const isWrongSelected = isRevealed && isSelected && option !== correctAnswer;
+
             return (
               <motion.button
                 key={index}
                 whileTap={isLockedIn ? undefined : { scale: 0.9 }}
-                className={`${style.bg} ${style.text} relative rounded-xl p-6 min-h-[80px] font-bold text-lg shadow-md transition-all ${
-                  isSelected
+                animate={
+                  reduced
+                    ? undefined
+                    : isRevealed
+                    ? isCorrectOption
+                      ? {
+                          scale: [1, 1.05, 1.0],
+                          boxShadow: [
+                            "0 0 0px rgba(34,197,94,0)",
+                            "0 0 30px rgba(34,197,94,0.6)",
+                            "0 0 0px rgba(34,197,94,0)",
+                          ],
+                        }
+                      : isWrongSelected
+                      ? shakeAnimation
+                      : { opacity: 0.4, scale: 0.95, filter: "grayscale(80%)" }
+                    : undefined
+                }
+                transition={
+                  isRevealed
+                    ? isCorrectOption
+                      ? { duration: 0.5, ease: "easeOut" }
+                      : { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                    : undefined
+                }
+                className={`${
+                  isRevealed && isCorrectOption
+                    ? "bg-[#22c55e] text-white"
+                    : style.bg + " " + style.text
+                } relative rounded-xl p-6 min-h-[80px] font-bold text-lg shadow-md transition-colors ${
+                  isSelected && !isRevealed
                     ? "ring-4 ring-[#1b2b5e] ring-offset-2 ring-offset-cream scale-95"
-                    : isFaded
+                    : isFaded && !isRevealed
                     ? "opacity-50 scale-95"
-                    : "scale-95 active:scale-90"
-                }`}
+                    : !isRevealed
+                    ? "scale-95 active:scale-90"
+                    : ""
+                } ${isWrongSelected ? "border-2 border-[#FF6B6B]" : ""}`}
                 onClick={() => onAnswer(option)}
                 disabled={disabled || isLockedIn}
               >
@@ -73,7 +118,7 @@ export default function AnswerButtons({
             );
           })}
         </div>
-        {isLockedIn && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel />}
       </div>
     );
   }
@@ -90,17 +135,49 @@ export default function AnswerButtons({
             const isSelected = isLockedIn && lockedAnswer === val;
             const isFaded = isLockedIn && lockedAnswer !== val;
             const bgColor = val === "True" ? "bg-emerald-500" : "bg-red-500";
+            const isCorrectOption = isRevealed && val === correctAnswer;
+            const isWrongSelected = isRevealed && isSelected && val !== correctAnswer;
+
             return (
               <motion.button
                 key={val}
                 whileTap={isLockedIn ? undefined : { scale: 0.9 }}
-                className={`rounded-xl p-6 min-h-[80px] ${bgColor} text-white font-bold text-2xl shadow-md transition-all ${
-                  isSelected
+                animate={
+                  reduced
+                    ? undefined
+                    : isRevealed
+                    ? isCorrectOption
+                      ? {
+                          scale: [1, 1.05, 1.0],
+                          boxShadow: [
+                            "0 0 0px rgba(34,197,94,0)",
+                            "0 0 30px rgba(34,197,94,0.6)",
+                            "0 0 0px rgba(34,197,94,0)",
+                          ],
+                        }
+                      : isWrongSelected
+                      ? shakeAnimation
+                      : { opacity: 0.4, scale: 0.95, filter: "grayscale(80%)" }
+                    : undefined
+                }
+                transition={
+                  isRevealed
+                    ? isCorrectOption
+                      ? { duration: 0.5, ease: "easeOut" }
+                      : { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                    : undefined
+                }
+                className={`rounded-xl p-6 min-h-[80px] ${
+                  isRevealed && isCorrectOption ? "bg-[#22c55e]" : bgColor
+                } text-white font-bold text-2xl shadow-md transition-colors ${
+                  isSelected && !isRevealed
                     ? "ring-4 ring-[#1b2b5e] ring-offset-2 ring-offset-cream scale-95"
-                    : isFaded
+                    : isFaded && !isRevealed
                     ? "opacity-50 scale-95"
-                    : "scale-95 active:scale-90"
-                }`}
+                    : !isRevealed
+                    ? "scale-95 active:scale-90"
+                    : ""
+                } ${isWrongSelected ? "border-2 border-[#FF6B6B]" : ""}`}
                 onClick={() => onAnswer(val)}
                 disabled={disabled || isLockedIn}
               >
@@ -109,7 +186,7 @@ export default function AnswerButtons({
             );
           })}
         </div>
-        {isLockedIn && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel />}
       </div>
     );
   }
@@ -168,7 +245,7 @@ export default function AnswerButtons({
             </motion.button>
           )}
         </div>
-        {isLockedIn && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel />}
       </div>
     );
   }
@@ -208,7 +285,7 @@ export default function AnswerButtons({
             </motion.button>
           )}
         </div>
-        {isLockedIn && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel />}
       </div>
     );
   }

@@ -3,7 +3,9 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { supabase, generateRoomCode, getHostId } from "@/lib/supabase";
+import { supabase, generateRoomCode } from "@/lib/supabase";
+import { getHostId } from "@/lib/host";
+import { saveQuizTemplate, markTemplateAsRun } from "@/lib/quizStorage";
 import type { QuestionFormData, QuestionType } from "@/types/quiz";
 import QuestionEditor from "@/components/host/QuestionEditor";
 
@@ -43,7 +45,9 @@ export default function NewQuizPage() {
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const handleQuestionChange = useCallback(
     (index: number, updated: QuestionFormData) => {
@@ -111,6 +115,7 @@ export default function NewQuizPage() {
 
     setError(null);
     setIsCreating(true);
+    setSaveSuccess(false);
 
     try {
       const hostId = getHostId();
@@ -120,6 +125,11 @@ export default function NewQuizPage() {
         (q) => q.question_text.trim().length > 0
       );
 
+      // Save to quiz template + question bank
+      const templateId = await saveQuizTemplate(hostId, title, validQuestions);
+      await markTemplateAsRun(templateId);
+
+      // Create room + quiz for live game
       const { data: room, error: roomError } = await supabase
         .from("qt_rooms")
         .insert({
@@ -185,12 +195,45 @@ export default function NewQuizPage() {
         );
       }
 
-      router.push(`/host/${roomCode}`);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        router.push(`/host/${roomCode}?templateId=${templateId}`);
+      }, 500);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred."
       );
       setIsCreating(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!title.trim()) {
+      setError("Please enter a quiz title.");
+      return;
+    }
+    const validQuestions = questions.filter(
+      (q) => q.question_text.trim().length > 0
+    );
+    if (validQuestions.length === 0) {
+      setError("Add at least one question with text.");
+      return;
+    }
+
+    setError(null);
+    setIsSavingDraft(true);
+    try {
+      const hostId = getHostId();
+      await saveQuizTemplate(hostId, title, validQuestions);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        router.push("/host/dashboard");
+      }, 500);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save draft."
+      );
+      setIsSavingDraft(false);
     }
   };
 
@@ -215,14 +258,40 @@ export default function NewQuizPage() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <button
+        <div className="flex items-center gap-3">
+          <motion.button
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft || isCreating}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm text-primary border border-primary/10 hover:bg-surface-container-low transition-colors disabled:opacity-50"
+          >
+            {isSavingDraft ? "Saving..." : "Save as Draft"}
+          </motion.button>
+          <motion.button
             onClick={handleCreate}
             disabled={isCreating}
-            className="bg-secondary-container text-white px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0px_10px_20px_rgba(255,107,107,0.2)] active:scale-95 transition-transform disabled:opacity-50"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-secondary-container text-white px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0px_10px_20px_rgba(255,107,107,0.2)] transition-shadow disabled:opacity-50 min-w-[120px]"
           >
-            {isCreating ? "Creating..." : "Start Quiz"}
-          </button>
+            {saveSuccess ? (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="inline-flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Saved!
+              </motion.span>
+            ) : isCreating ? (
+              "Creating..."
+            ) : (
+              "Start Quiz"
+            )}
+          </motion.button>
         </div>
       </header>
 
@@ -253,6 +322,7 @@ export default function NewQuizPage() {
                   key={idx}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -2, boxShadow: "0 4px 12px rgba(27,43,94,0.08)" }}
                   transition={{ delay: idx * 0.03 }}
                   onClick={() => setSelectedIndex(idx)}
                   className={`p-3 rounded-xl flex gap-3 group cursor-pointer transition-all ${
@@ -309,13 +379,15 @@ export default function NewQuizPage() {
           </div>
           {/* Add Question Button */}
           <div className="p-4 bg-surface-container-low border-t border-outline-variant/10">
-            <button
+            <motion.button
               onClick={addQuestion}
-              className="w-full py-4 rounded-xl bg-primary text-on-primary font-bold flex items-center justify-center gap-2 shadow-[0px_10px_20px_rgba(2,21,73,0.1)] active:scale-95 transition-transform"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full py-4 rounded-xl bg-primary text-on-primary font-bold flex items-center justify-center gap-2 shadow-[0px_10px_20px_rgba(2,21,73,0.1)] transition-shadow"
             >
               <span className="material-symbols-outlined">add_circle</span>
               Add Question
-            </button>
+            </motion.button>
           </div>
         </aside>
 

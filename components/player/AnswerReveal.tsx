@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 
 interface AnswerRevealProps {
   isCorrect: boolean;
@@ -24,6 +25,7 @@ export default function AnswerReveal({
 }: AnswerRevealProps) {
   const [displayPoints, setDisplayPoints] = useState(0);
   const [showNextMessage, setShowNextMessage] = useState(false);
+  const reduced = useReducedMotion();
 
   const timeTakenSeconds = (timeTakenMs / 1000).toFixed(1);
 
@@ -58,9 +60,11 @@ export default function AnswerReveal({
     return () => clearTimeout(timeout);
   }, []);
 
+  const noAnim = reduced;
+
   return (
     <motion.div
-      initial={{ scale: 0.8, opacity: 0 }}
+      initial={noAnim ? undefined : { scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       className="flex flex-col items-center justify-center gap-5 py-8 px-6 text-center"
@@ -69,13 +73,13 @@ export default function AnswerReveal({
         <>
           {/* Coral checkmark circle */}
           <motion.div
-            initial={{ scale: 0 }}
+            initial={noAnim ? undefined : { scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
               type: "spring",
               stiffness: 400,
               damping: 12,
-              delay: 0.1,
+              delay: 0.15,
             }}
             className="w-24 h-24 rounded-full bg-[#FF6B6B] flex items-center justify-center shadow-lg"
           >
@@ -94,14 +98,25 @@ export default function AnswerReveal({
             </svg>
           </motion.div>
 
-          {/* Points */}
+          {/* Points — spring overshoot */}
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-5xl font-extrabold text-navy"
+            initial={noAnim ? undefined : { y: 20, scale: 0, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 15,
+              delay: 0.1,
+            }}
           >
-            +{displayPoints} pts
+            <motion.span
+              initial={noAnim ? undefined : { scale: 1.2 }}
+              animate={{ scale: 1.0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.3 }}
+              className="text-5xl font-extrabold text-navy inline-block"
+            >
+              +{displayPoints} pts
+            </motion.span>
           </motion.div>
 
           {/* Subtext */}
@@ -112,7 +127,7 @@ export default function AnswerReveal({
 
           {isJoker && (
             <motion.div
-              initial={{ scale: 0, rotate: -12 }}
+              initial={noAnim ? undefined : { scale: 0, rotate: -12 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{
                 type: "spring",
@@ -128,15 +143,15 @@ export default function AnswerReveal({
         </>
       ) : (
         <>
-          {/* Grey X circle */}
+          {/* Grey X circle — scales in with delay after points */}
           <motion.div
-            initial={{ scale: 0 }}
+            initial={noAnim ? undefined : { scale: 0 }}
             animate={{ scale: 1 }}
             transition={{
               type: "spring",
               stiffness: 400,
               damping: 12,
-              delay: 0.1,
+              delay: 0.15,
             }}
             className="w-24 h-24 rounded-full bg-slate-400 flex items-center justify-center shadow-lg"
           >
@@ -155,11 +170,16 @@ export default function AnswerReveal({
             </svg>
           </motion.div>
 
-          {/* 0 pts */}
+          {/* 0 pts — spring overshoot */}
           <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+            initial={noAnim ? undefined : { y: 20, scale: 0, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            transition={{
+              type: "spring",
+              stiffness: 200,
+              damping: 15,
+              delay: 0.1,
+            }}
             className="text-4xl font-bold text-ink/40"
           >
             0 pts
@@ -170,7 +190,7 @@ export default function AnswerReveal({
 
           {/* Correct answer card */}
           <motion.div
-            initial={{ y: 10, opacity: 0 }}
+            initial={noAnim ? undefined : { y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.35 }}
             className="bg-navy/5 border border-navy/10 rounded-2xl px-6 py-4"
@@ -185,7 +205,7 @@ export default function AnswerReveal({
 
       {/* Running total */}
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={noAnim ? undefined : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
         className="mt-2 text-sm text-ink/50 font-medium"

@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Button from "@/components/shared/Button";
 import AnimatedContainer from "@/components/shared/AnimatedContainer";
+import { hasHostId } from "@/lib/host";
 
 export default function HomePage() {
   const router = useRouter();
   const [roomCode, setRoomCode] = useState("");
+  const [isReturningHost, setIsReturningHost] = useState(false);
+
+  useEffect(() => {
+    setIsReturningHost(hasHostId());
+  }, []);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +57,17 @@ export default function HomePage() {
             >
               Start a Quiz
             </Button>
+            {isReturningHost && (
+              <button
+                onClick={() => router.push("/host/dashboard")}
+                className="w-full mt-3 text-sm font-bold text-primary hover:text-primary-container transition-colors flex items-center justify-center gap-1"
+              >
+                Host Dashboard
+                <span className="material-symbols-outlined text-[16px]">
+                  arrow_forward
+                </span>
+              </button>
+            )}
           </div>
         </AnimatedContainer>
 

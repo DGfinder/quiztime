@@ -40,13 +40,5 @@ export function generateRoomCode(): string {
   return code;
 }
 
-// Get or create a host session ID (stored in localStorage)
-export function getHostId(): string {
-  if (typeof window === "undefined") return "";
-  let hostId = localStorage.getItem("quiztime_host_id");
-  if (!hostId) {
-    hostId = crypto.randomUUID();
-    localStorage.setItem("quiztime_host_id", hostId);
-  }
-  return hostId;
-}
+// Re-export getHostId from lib/host for backward compatibility
+export { getHostId } from "@/lib/host";

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
+import { saveSessionResult, type QuestionStat } from "@/lib/quizStorage";
 import {
   useRoomChannel,
   usePlayersSubscription,
@@ -38,7 +39,9 @@ import AudioPlayer from "@/components/host/AudioPlayer";
 export default function HostControlPanel() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const roomCode = params.roomCode as string;
+  const templateId = searchParams.get("templateId");
 
   // Core data
   const [room, setRoom] = useState<Room | null>(null);
@@ -461,6 +464,48 @@ export default function HostControlPanel() {
         .update({ status: "finished" })
         .eq("id", room.id);
       setRoom((prev) => (prev ? { ...prev, status: "finished" } : prev));
+
+      // Save session results
+      try {
+        const questionStats: QuestionStat[] = [];
+        for (const q of questionsRef.current) {
+          const { data: answers } = await supabase
+            .from("qt_answers")
+            .select("is_correct, time_taken_ms")
+            .eq("question_id", q.id);
+
+          const total = answers?.length || 0;
+          const correctCount = answers?.filter((a: { is_correct: boolean }) => a.is_correct).length || 0;
+          const avgTimeMs =
+            total > 0
+              ? Math.round(
+                  (answers || []).reduce((sum: number, a: { time_taken_ms: number }) => sum + a.time_taken_ms, 0) / total
+                )
+              : 0;
+
+          questionStats.push({
+            questionId: q.id,
+            text: q.question_text,
+            totalAnswers: total,
+            correctCount,
+            avgTimeMs,
+          });
+        }
+
+        await saveSessionResult(
+          room.id,
+          templateId,
+          room.host_id,
+          quiz?.title || "Untitled",
+          playersRef.current.length,
+          questionsRef.current.length,
+          entries,
+          questionStats,
+          room.created_at
+        );
+      } catch {
+        // Non-blocking: session results save failure shouldn't break the game
+      }
     }
   };
 
@@ -587,9 +632,18 @@ export default function HostControlPanel() {
                 <span className="text-[10px] font-bold text-primary opacity-60 uppercase tracking-widest">
                   Progress
                 </span>
-                <span className="text-lg font-black text-primary">
-                  Question {currentQuestionIndex + 1} of {questions.length}
-                </span>
+                <AnimatePresence mode="popLayout">
+                  <motion.span
+                    key={currentQuestionIndex}
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 10, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="text-lg font-black text-primary inline-block"
+                  >
+                    Question {currentQuestionIndex + 1} of {questions.length}
+                  </motion.span>
+                </AnimatePresence>
               </div>
               <div className="h-10 w-0.5 bg-primary/10" />
               <div className="flex items-center gap-4">
@@ -655,10 +709,11 @@ export default function HostControlPanel() {
         {(gameState === "question_start" || gameState === "question_end") &&
           currentQuestion && (
             <motion.main
-              key={`question-${currentQuestionIndex}-${gameState}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              key={`question-${currentQuestionIndex}`}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="flex-1 flex p-8 gap-8 max-w-[1600px] mx-auto w-full overflow-hidden"
             >
               {/* Left: Question & Media */}

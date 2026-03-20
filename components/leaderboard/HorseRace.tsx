@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import type { LeaderboardEntry } from "@/types/quiz";
 import { getTrackPosition } from "@/lib/suspense";
 
@@ -30,10 +31,37 @@ export default function HorseRace({
   questionProgress,
   suspenseMode,
 }: HorseRaceProps) {
+  const reduced = useReducedMotion();
   const sorted = useMemo(
     () => [...entries].sort((a, b) => b.score - a.score).slice(0, 6),
     [entries]
   );
+
+  // Track previous positions to detect overtakes
+  const prevPositionsRef = useRef<Map<string, number>>(new Map());
+  const [overtaking, setOvertaking] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const prev = prevPositionsRef.current;
+    const newOvertakes = new Set<string>();
+
+    sorted.forEach((entry, index) => {
+      const prevIndex = prev.get(entry.player_id);
+      if (prevIndex !== undefined && index < prevIndex) {
+        newOvertakes.add(entry.player_id);
+      }
+    });
+
+    if (newOvertakes.size > 0 && !reduced) {
+      setOvertaking(newOvertakes);
+      const timer = setTimeout(() => setOvertaking(new Set()), 300);
+      return () => clearTimeout(timer);
+    }
+
+    const newMap = new Map<string, number>();
+    sorted.forEach((entry, index) => newMap.set(entry.player_id, index));
+    prevPositionsRef.current = newMap;
+  }, [sorted, reduced]);
 
   return (
     <div className="w-full h-screen bg-[#021549] text-[#FAFAF7] flex flex-col overflow-hidden">
@@ -65,6 +93,8 @@ export default function HorseRace({
           const color = rankColors[rank] ?? "rgba(255,255,255,0.2)";
           const emoji = horseEmojis[index] ?? "🐎";
           const isTop3 = rank <= 3;
+          const isLeader = rank === 1;
+          const isOvertaking = overtaking.has(entry.player_id);
 
           // Use scrambled position if provided, otherwise calculate from score
           const trackLeft = scrambledPositions?.get(entry.player_id)
@@ -96,21 +126,41 @@ export default function HorseRace({
                   className="absolute top-1/2 -translate-y-1/2"
                   initial={{ left: "0%" }}
                   animate={{ left: `${trackLeft}%` }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 120,
-                    damping: 20,
-                  }}
+                  transition={
+                    reduced
+                      ? { duration: 0.3 }
+                      : {
+                          type: "spring",
+                          stiffness: 100,
+                          damping: 20,
+                        }
+                  }
                 >
                   <div className="relative flex items-center">
+                    {/* Whoosh trail for overtaking horse */}
+                    {isOvertaking && (
+                      <div
+                        className="absolute -left-8 top-1/2 -translate-y-1/2 w-10 h-4 opacity-60"
+                        style={{
+                          background: `linear-gradient(to left, ${color}40, transparent)`,
+                          borderRadius: "50%",
+                          animation: "whoosh-fade 0.3s ease-out forwards",
+                        }}
+                      />
+                    )}
                     <div
                       className="w-16 h-16 rounded-full flex items-center justify-center text-3xl border-[3px]"
                       style={{
                         borderColor: color,
                         backgroundColor: `${typeof color === "string" && color.startsWith("#") ? color : "rgba(255,255,255,0.1)"}20`,
-                        boxShadow: isTop3
+                        boxShadow: isLeader
+                          ? `0 0 20px ${color}55, 0 0 40px ${color}22`
+                          : isTop3
                           ? `0 0 20px ${color}33`
                           : "none",
+                        animation: isLeader && !reduced
+                          ? "leader-glow 2s ease-in-out infinite"
+                          : undefined,
                       }}
                     >
                       {emoji}
@@ -143,11 +193,16 @@ export default function HorseRace({
         )}
       </div>
 
-      {/* ESPN glow styles */}
+      {/* Animation styles */}
       <style jsx>{`
-        .espn-glow-coral { box-shadow: 0 0 20px rgba(255, 107, 107, 0.2); }
-        .espn-glow-amber { box-shadow: 0 0 20px rgba(255, 185, 95, 0.2); }
-        .espn-glow-blue { box-shadow: 0 0 20px rgba(96, 165, 250, 0.2); }
+        @keyframes leader-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(255,107,107,0.3), 0 0 40px rgba(255,107,107,0.1); }
+          50% { box-shadow: 0 0 30px rgba(255,107,107,0.55), 0 0 60px rgba(255,107,107,0.2); }
+        }
+        @keyframes whoosh-fade {
+          0% { opacity: 0.6; transform: translateY(-50%) scaleX(1); }
+          100% { opacity: 0; transform: translateY(-50%) scaleX(0.3); }
+        }
       `}</style>
     </div>
   );
