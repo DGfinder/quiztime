@@ -51,7 +51,7 @@ export default function QuestionEditor({
   }
 
   function switchType(type: QuestionType) {
-    const defaults: Partial<QuestionFormData> = { type };
+    const defaults: Partial<QuestionFormData> = { type, correct_answer: "" };
     if (type === "true_false") {
       defaults.correct_answer = "True";
       defaults.options = ["True", "False"];
@@ -68,7 +68,7 @@ export default function QuestionEditor({
     if (type === "slider") {
       defaults.slider_min = question.slider_min ?? 0;
       defaults.slider_max = question.slider_max ?? 100;
-      defaults.correct_answer = question.correct_answer || "50";
+      defaults.correct_answer = "50";
     }
     update(defaults);
   }

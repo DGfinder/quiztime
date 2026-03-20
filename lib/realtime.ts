@@ -116,6 +116,10 @@ export function useTimer(
 ) {
   const [timeRemaining, setTimeRemaining] = useState(durationSeconds);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onTickRef = useRef(onTick);
+  onTickRef.current = onTick;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     setTimeRemaining(durationSeconds);
@@ -132,10 +136,10 @@ export function useTimer(
         const next = prev - 1;
         if (next <= 0) {
           if (intervalRef.current) clearInterval(intervalRef.current);
-          onComplete?.();
+          onCompleteRef.current?.();
           return 0;
         }
-        onTick?.(next);
+        onTickRef.current?.(next);
         return next;
       });
     }, 1000);
@@ -143,7 +147,7 @@ export function useTimer(
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, onTick, onComplete]);
+  }, [isRunning]);
 
   const reset = useCallback(
     (newDuration?: number) => {

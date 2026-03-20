@@ -13,6 +13,7 @@ interface AnswerDistributionProps {
   correctAnswer: string;
   questionType: QuestionType;
   totalPlayers: number;
+  revealed?: boolean;
 }
 
 const optionLabels = ["A", "B", "C", "D", "E", "F"];
@@ -21,6 +22,7 @@ export default function AnswerDistribution({
   answers,
   correctAnswer,
   totalPlayers,
+  revealed,
 }: AnswerDistributionProps) {
   const totalAnswers = answers.reduce((sum, a) => sum + a.count, 0);
   const maxCount = Math.max(...answers.map((a) => a.count), 1);
@@ -83,8 +85,10 @@ export default function AnswerDistribution({
                     ease: "easeOut",
                   }}
                   className={`h-full rounded-full ${
-                    isCorrect
-                      ? "bg-emerald-500"
+                    revealed
+                      ? isCorrect
+                        ? "bg-emerald-500"
+                        : "bg-red-400"
                       : isTop
                       ? "bg-primary"
                       : "bg-primary/40"

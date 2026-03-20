@@ -14,6 +14,7 @@ import type {
   LeaderboardEntry,
   AnswerRevealPayload,
 } from "@/types/quiz";
+import Image from "next/image";
 import Button from "@/components/shared/Button";
 import AnimatedContainer from "@/components/shared/AnimatedContainer";
 import TimerBar from "@/components/shared/TimerBar";
@@ -110,6 +111,9 @@ export default function PlayPage() {
   // Leaderboard
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
+
+  // Image loading
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Joining state
   const [isJoining, setIsJoining] = useState(false);
@@ -221,6 +225,7 @@ export default function PlayPage() {
           const safeQuestion = { ...p.question };
           delete (safeQuestion as Partial<Question>).correct_answer;
           setCurrentQuestion(safeQuestion as Question);
+          setImageLoaded(false);
           setQuestionNumber(p.question_number);
           setTotalQuestions(p.total_questions);
           setTimeRemaining(safeQuestion.time_limit);
@@ -519,12 +524,18 @@ export default function PlayPage() {
               {/* Question text */}
               <div className="bg-white rounded-3xl shadow-md p-6">
                 {currentQuestion.image_url && (
-                  <div className="mb-4 rounded-2xl overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <div className="mb-4 rounded-2xl overflow-hidden relative aspect-video">
+                    {!imageLoaded && (
+                      <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse" />
+                    )}
+                    <Image
                       src={currentQuestion.image_url}
                       alt="Question image"
-                      className="w-full h-auto max-h-48 object-contain bg-cream"
+                      fill
+                      className="object-cover rounded-xl"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      loading="eager"
+                      onLoad={() => setImageLoaded(true)}
                     />
                   </div>
                 )}
@@ -586,12 +597,18 @@ export default function PlayPage() {
               {/* Question text */}
               <div className="bg-white rounded-3xl shadow-md p-6">
                 {currentQuestion.image_url && (
-                  <div className="mb-4 rounded-2xl overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <div className="mb-4 rounded-2xl overflow-hidden relative aspect-video">
+                    {!imageLoaded && (
+                      <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse" />
+                    )}
+                    <Image
                       src={currentQuestion.image_url}
                       alt="Question image"
-                      className="w-full h-auto max-h-48 object-contain bg-cream"
+                      fill
+                      className="object-cover rounded-xl"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      loading="eager"
+                      onLoad={() => setImageLoaded(true)}
                     />
                   </div>
                 )}

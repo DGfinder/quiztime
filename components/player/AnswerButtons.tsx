@@ -128,17 +128,33 @@ export default function AnswerButtons({
           <div className="text-5xl font-bold text-navy">
             {isLockedIn ? lockedAnswer : sliderValue}
           </div>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            value={isLockedIn ? Number(lockedAnswer) : sliderValue}
-            onChange={(e) => setSliderValue(Number(e.target.value))}
-            disabled={disabled || isLockedIn}
-            className="w-full h-3 rounded-full appearance-none bg-cream-dark accent-coral cursor-pointer"
-          />
+          {/* Slider with pulsing drag hint */}
+          <div className="relative w-full">
+            <input
+              type="range"
+              min={min}
+              max={max}
+              value={isLockedIn ? Number(lockedAnswer) : sliderValue}
+              onChange={(e) => setSliderValue(Number(e.target.value))}
+              disabled={disabled || isLockedIn}
+              className="w-full h-3 rounded-full appearance-none bg-cream-dark accent-coral cursor-pointer"
+            />
+            {/* Pulsing dot hint — only shows if user hasn't moved slider yet */}
+            {!isLockedIn && sliderValue === min && (
+              <div
+                className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: "0%" }}
+              >
+                <span className="relative flex h-5 w-5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-coral opacity-75" />
+                  <span className="relative inline-flex rounded-full h-5 w-5 bg-coral" />
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex justify-between w-full text-sm text-ink/50 font-medium">
             <span>{min}</span>
+            <span className="text-ink/30 text-xs">← drag to your answer →</span>
             <span>{max}</span>
           </div>
           {!isLockedIn && (

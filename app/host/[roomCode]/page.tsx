@@ -26,6 +26,7 @@ import type {
   GameState,
   LeaderboardEntry,
 } from "@/types/quiz";
+import Image from "next/image";
 import Button from "@/components/shared/Button";
 import AnimatedContainer from "@/components/shared/AnimatedContainer";
 import AnswerDistribution from "@/components/host/AnswerDistribution";
@@ -58,6 +59,7 @@ export default function HostControlPanel() {
   const [answerRevealed, setAnswerRevealed] = useState(false);
   const [suspenseMode, setSuspenseMode] = useState(false);
   const [showSuspenseModal, setShowSuspenseModal] = useState(false);
+  const [hostImageLoaded, setHostImageLoaded] = useState(false);
 
   // Refs to avoid stale closures
   const playersRef = useRef<Player[]>(players);
@@ -221,6 +223,7 @@ export default function HostControlPanel() {
     setCurrentAnswers([]);
     setScoringComplete(false);
     setAnswerRevealed(false);
+    setHostImageLoaded(false);
     setGameState("question_start");
     setTimerRunning(true);
     resetTimer(question.time_limit);
@@ -674,11 +677,18 @@ export default function HostControlPanel() {
 
                   {/* Image if present */}
                   {currentQuestion.image_url && (
-                    <div className="mt-8 relative group rounded-lg overflow-hidden h-[400px]">
-                      <img
+                    <div className="mt-8 relative group rounded-lg overflow-hidden aspect-video">
+                      {!hostImageLoaded && (
+                        <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse" />
+                      )}
+                      <Image
                         alt="Question media"
-                        className="w-full h-full object-cover rounded-lg shadow-lg"
+                        className="object-cover rounded-lg shadow-lg"
                         src={currentQuestion.image_url}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        loading="eager"
+                        onLoad={() => setHostImageLoaded(true)}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent" />
                     </div>
@@ -704,23 +714,103 @@ export default function HostControlPanel() {
                       </div>
                     )}
 
-                  {/* Correct answer reveal overlay */}
+                  {/* Live stats panel */}
                   {gameState === "question_end" && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-8 bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 text-center"
+                      className="mt-8 space-y-3"
                     >
-                      <p className="text-sm font-bold text-emerald-600 mb-1">
-                        Correct Answer
-                      </p>
-                      <p className="text-3xl font-black text-emerald-700">
-                        {currentQuestion.correct_answer}
-                      </p>
-                      {currentQuestion.is_joker && (
-                        <span className="inline-block mt-2 bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold px-4 py-1 rounded-2xl text-sm">
-                          Joker Round - 2x Points!
-                        </span>
+                      {!answerRevealed ? (
+                        /* Before reveal: live stats only */
+                        <div className="bg-surface-container-low border border-outline-variant/20 rounded-xl p-6">
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Answered</p>
+                              <p className="text-2xl font-black text-primary">{currentAnswers.length}/{players.length}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Fastest</p>
+                              <p className="text-2xl font-black text-primary">
+                                {currentAnswers.length > 0
+                                  ? (Math.min(...currentAnswers.map(a => a.time_taken_ms)) / 1000).toFixed(1) + "s"
+                                  : "—"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-outline uppercase tracking-widest">Avg Time</p>
+                              <p className="text-2xl font-black text-primary">
+                                {currentAnswers.length > 0
+                                  ? (currentAnswers.reduce((sum, a) => sum + a.time_taken_ms, 0) / currentAnswers.length / 1000).toFixed(1) + "s"
+                                  : "—"}
+                              </p>
+                            </div>
+                          </div>
+                          {currentQuestion.is_joker && (
+                            <div className="mt-3 text-center">
+                              <span className="inline-block bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold px-4 py-1 rounded-2xl text-sm">
+                                Joker Round - 2x Points!
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* After reveal: correct/wrong stats + answer text */
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                              <p className="text-2xl font-black text-emerald-700">
+                                {(() => {
+                                  const correct = currentAnswers.filter(a => {
+                                    const opt = currentQuestion.options;
+                                    if (opt && (currentQuestion.type === "multiple_choice" || currentQuestion.type === "image_question" || currentQuestion.type === "video_question" || currentQuestion.type === "audio_question")) {
+                                      const idx = parseInt(currentQuestion.correct_answer);
+                                      return !isNaN(idx) ? a.answer_value === opt[idx] : a.answer_value.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                                    }
+                                    return a.answer_value.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                                  }).length;
+                                  const pct = currentAnswers.length > 0 ? Math.round(correct / currentAnswers.length * 100) : 0;
+                                  return `${correct} correct (${pct}%)`;
+                                })()}
+                              </p>
+                            </div>
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                              <p className="text-2xl font-black text-red-600">
+                                {(() => {
+                                  const correct = currentAnswers.filter(a => {
+                                    const opt = currentQuestion.options;
+                                    if (opt && (currentQuestion.type === "multiple_choice" || currentQuestion.type === "image_question" || currentQuestion.type === "video_question" || currentQuestion.type === "audio_question")) {
+                                      const idx = parseInt(currentQuestion.correct_answer);
+                                      return !isNaN(idx) ? a.answer_value === opt[idx] : a.answer_value.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                                    }
+                                    return a.answer_value.toLowerCase() === currentQuestion.correct_answer.toLowerCase();
+                                  }).length;
+                                  const wrong = currentAnswers.length - correct;
+                                  const pct = currentAnswers.length > 0 ? Math.round(wrong / currentAnswers.length * 100) : 0;
+                                  return `${wrong} wrong (${pct}%)`;
+                                })()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-4 text-center">
+                            <p className="text-sm font-bold text-emerald-600 mb-1">Correct Answer</p>
+                            <p className="text-2xl font-black text-emerald-700">
+                              {(() => {
+                                const opt = currentQuestion.options;
+                                if (opt && (currentQuestion.type === "multiple_choice" || currentQuestion.type === "image_question" || currentQuestion.type === "video_question" || currentQuestion.type === "audio_question")) {
+                                  const idx = parseInt(currentQuestion.correct_answer);
+                                  if (!isNaN(idx) && opt[idx]) return opt[idx];
+                                }
+                                return currentQuestion.correct_answer;
+                              })()}
+                            </p>
+                          </div>
+                          <div className="text-center text-sm font-bold text-outline">
+                            Avg time: {currentAnswers.length > 0
+                              ? (currentAnswers.reduce((sum, a) => sum + a.time_taken_ms, 0) / currentAnswers.length / 1000).toFixed(1) + "s"
+                              : "—"}
+                          </div>
+                        </div>
                       )}
                     </motion.div>
                   )}
@@ -734,6 +824,7 @@ export default function HostControlPanel() {
                   correctAnswer={currentQuestion.correct_answer}
                   questionType={currentQuestion.type}
                   totalPlayers={players.length}
+                  revealed={answerRevealed}
                 />
 
                 {/* Action buttons */}
