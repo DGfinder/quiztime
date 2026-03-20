@@ -422,6 +422,31 @@ export default function QuestionEditor({
               </div>
             </div>
 
+            {/* Tolerance */}
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="bg-surface-container-lowest p-4 rounded-2xl shadow-sm border border-outline-variant/5 flex items-center gap-3 flex-1">
+                <span className="material-symbols-outlined text-outline text-sm">
+                  target
+                </span>
+                <div className="flex-1">
+                  <span className="text-[10px] font-bold text-outline uppercase tracking-wider block">
+                    Tolerance (±)
+                  </span>
+                  <input
+                    className="block w-full text-lg font-bold text-primary border-none p-0 focus:ring-0 focus:outline-none bg-transparent"
+                    type="number"
+                    min={0}
+                    placeholder="0"
+                    value={question.slider_tolerance ?? ""}
+                    onChange={(e) =>
+                      update({ slider_tolerance: e.target.value ? Number(e.target.value) : undefined })
+                    }
+                  />
+                </div>
+                <span className="text-xs text-outline/60">Accept answers within ±{question.slider_tolerance ?? 0}</span>
+              </div>
+            </div>
+
             {/* Slider Preview */}
             <div className="py-12 px-4 space-y-8 relative z-10">
               <div className="relative h-4 bg-surface-container-highest rounded-full w-full">

@@ -45,6 +45,7 @@ export interface Question {
   is_joker: boolean;
   slider_min?: number;
   slider_max?: number;
+  slider_tolerance?: number;
   video_url?: string;
   video_start_seconds?: number;
   video_end_seconds?: number;
@@ -128,6 +129,7 @@ export interface QuestionFormData {
   is_joker: boolean;
   slider_min: number;
   slider_max: number;
+  slider_tolerance?: number;
   video_url: string;
   video_start_seconds: number;
   video_end_seconds: number | null;
