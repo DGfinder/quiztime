@@ -125,7 +125,7 @@ export default function PlayPage() {
 
     async function verifyRoom() {
       const { data, error } = await supabase
-        .from("rooms")
+        .from("qt_rooms")
         .select("id, status")
         .eq("room_code", roomCode)
         .single();
@@ -151,7 +151,7 @@ export default function PlayPage() {
       if (stored && stored.roomId === data.id) {
         // Verify player still exists in DB
         const { data: playerRow } = await supabase
-          .from("players")
+          .from("qt_players")
           .select("id, name, horse_name, score")
           .eq("id", stored.playerId)
           .eq("room_id", data.id)
@@ -286,7 +286,7 @@ export default function PlayPage() {
 
   async function fetchFinalScore(pid: string) {
     const { data } = await supabase
-      .from("players")
+      .from("qt_players")
       .select("score")
       .eq("id", pid)
       .single();
@@ -309,7 +309,7 @@ export default function PlayPage() {
     const horse = generateHorseName();
 
     const { data, error } = await supabase
-      .from("players")
+      .from("qt_players")
       .insert({
         room_id: roomId,
         name,
@@ -351,7 +351,7 @@ export default function PlayPage() {
     setTimeTakenMs(taken);
     setPhase("answered");
 
-    await supabase.from("answers").insert({
+    await supabase.from("qt_answers").insert({
       question_id: currentQuestion.id,
       player_id: playerId,
       answer_value: answer,

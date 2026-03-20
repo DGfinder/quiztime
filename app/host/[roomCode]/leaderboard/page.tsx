@@ -33,7 +33,7 @@ export default function LeaderboardPage() {
 
       try {
         const { data: roomData, error: roomErr } = await supabase
-          .from("rooms")
+          .from("qt_rooms")
           .select("*")
           .eq("room_code", roomCode)
           .single();
@@ -47,7 +47,7 @@ export default function LeaderboardPage() {
         setRoom(roomData as Room);
 
         const { data: playersData, error: playersErr } = await supabase
-          .from("players")
+          .from("qt_players")
           .select("*")
           .eq("room_id", roomData.id)
           .order("score", { ascending: false });
@@ -80,7 +80,7 @@ export default function LeaderboardPage() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "players",
+          table: "qt_players",
           filter: `room_id=eq.${room.id}`,
         },
         (payload) => {
@@ -97,7 +97,7 @@ export default function LeaderboardPage() {
         {
           event: "INSERT",
           schema: "public",
-          table: "players",
+          table: "qt_players",
           filter: `room_id=eq.${room.id}`,
         },
         (payload) => {
@@ -144,7 +144,7 @@ export default function LeaderboardPage() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "rooms",
+          table: "qt_rooms",
           filter: `id=eq.${room.id}`,
         },
         (payload) => {
@@ -165,7 +165,7 @@ export default function LeaderboardPage() {
 
     const interval = setInterval(async () => {
       const { data } = await supabase
-        .from("rooms")
+        .from("qt_rooms")
         .select("status")
         .eq("id", room.id)
         .single();

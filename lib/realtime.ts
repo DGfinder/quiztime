@@ -58,7 +58,7 @@ export function usePlayersSubscription(
         {
           event: "INSERT",
           schema: "public",
-          table: "players",
+          table: "qt_players",
           filter: `room_id=eq.${roomId}`,
         },
         (payload) => {
@@ -90,7 +90,7 @@ export function useAnswersSubscription(
         {
           event: "INSERT",
           schema: "public",
-          table: "answers",
+          table: "qt_answers",
           filter: `question_id=eq.${questionId}`,
         },
         (payload) => {

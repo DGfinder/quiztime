@@ -121,7 +121,7 @@ export default function NewQuizPage() {
       );
 
       const { data: room, error: roomError } = await supabase
-        .from("rooms")
+        .from("qt_rooms")
         .insert({
           room_code: roomCode,
           host_id: hostId,
@@ -135,7 +135,7 @@ export default function NewQuizPage() {
       }
 
       const { data: quiz, error: quizError } = await supabase
-        .from("quizzes")
+        .from("qt_quizzes")
         .insert({
           room_id: room.id,
           title: title.trim(),
@@ -176,7 +176,7 @@ export default function NewQuizPage() {
       }));
 
       const { error: questionsError } = await supabase
-        .from("questions")
+        .from("qt_questions")
         .insert(questionRows);
 
       if (questionsError) {

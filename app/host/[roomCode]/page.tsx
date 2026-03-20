@@ -112,7 +112,7 @@ export default function HostControlPanel() {
 
       try {
         const { data: roomData, error: roomErr } = await supabase
-          .from("rooms")
+          .from("qt_rooms")
           .select("*")
           .eq("room_code", roomCode)
           .single();
@@ -125,7 +125,7 @@ export default function HostControlPanel() {
         setRoom(roomData as Room);
 
         const { data: quizData, error: quizErr } = await supabase
-          .from("quizzes")
+          .from("qt_quizzes")
           .select("*")
           .eq("room_id", roomData.id)
           .single();
@@ -138,7 +138,7 @@ export default function HostControlPanel() {
         setQuiz(quizData as Quiz);
 
         const { data: questionsData, error: questionsErr } = await supabase
-          .from("questions")
+          .from("qt_questions")
           .select("*")
           .eq("quiz_id", quizData.id)
           .order("order_index", { ascending: true });
@@ -151,7 +151,7 @@ export default function HostControlPanel() {
         setQuestions((questionsData as Question[]) || []);
 
         const { data: playersData } = await supabase
-          .from("players")
+          .from("qt_players")
           .select("*")
           .eq("room_id", roomData.id)
           .order("joined_at", { ascending: true });
@@ -204,7 +204,7 @@ export default function HostControlPanel() {
     if (!room || players.length === 0) return;
 
     await supabase
-      .from("rooms")
+      .from("qt_rooms")
       .update({ status: "active" })
       .eq("id", room.id);
 
@@ -344,7 +344,7 @@ export default function HostControlPanel() {
 
       for (const u of updates) {
         await supabase
-          .from("answers")
+          .from("qt_answers")
           .update({ is_correct: u.is_correct, points_earned: u.points_earned })
           .eq("id", u.id);
       }
@@ -354,7 +354,7 @@ export default function HostControlPanel() {
         if (player) {
           const newScore = player.score + pointsToAdd;
           await supabase
-            .from("players")
+            .from("qt_players")
             .update({ score: newScore })
             .eq("id", playerId);
         }
@@ -362,7 +362,7 @@ export default function HostControlPanel() {
 
       if (room) {
         const { data: freshPlayers } = await supabase
-          .from("players")
+          .from("qt_players")
           .select("*")
           .eq("room_id", room.id)
           .order("score", { ascending: false });
@@ -400,7 +400,7 @@ export default function HostControlPanel() {
     for (const answer of currentAnswers) {
       // Fetch the scored answer from DB to get is_correct and points_earned
       const { data } = await supabase
-        .from("answers")
+        .from("qt_answers")
         .select("is_correct, points_earned")
         .eq("id", answer.id)
         .single();
@@ -454,7 +454,7 @@ export default function HostControlPanel() {
 
     if (room) {
       await supabase
-        .from("rooms")
+        .from("qt_rooms")
         .update({ status: "finished" })
         .eq("id", room.id);
       setRoom((prev) => (prev ? { ...prev, status: "finished" } : prev));
