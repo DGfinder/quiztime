@@ -1,0 +1,1104 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import {
+  useRoomChannel,
+  usePlayersSubscription,
+  useAnswersSubscription,
+  useTimer,
+} from "@/lib/realtime";
+import {
+  scoreStandardQuestion,
+  calculateSliderPoints,
+  calculateTypeInPoints,
+  applyJokerMultiplier,
+} from "@/lib/scoring";
+import { isInSuspensePhase } from "@/lib/suspense";
+import type {
+  Room,
+  Quiz,
+  Question,
+  Player,
+  Answer,
+  GameState,
+  LeaderboardEntry,
+} from "@/types/quiz";
+import Button from "@/components/shared/Button";
+import AnimatedContainer from "@/components/shared/AnimatedContainer";
+import AnswerDistribution from "@/components/host/AnswerDistribution";
+import Lobby from "@/components/host/Lobby";
+import SuspenseModal from "@/components/host/SuspenseModal";
+import VideoPlayer from "@/components/host/VideoPlayer";
+import AudioPlayer from "@/components/host/AudioPlayer";
+
+export default function HostControlPanel() {
+  const params = useParams();
+  const router = useRouter();
+  const roomCode = params.roomCode as string;
+
+  // Core data
+  const [room, setRoom] = useState<Room | null>(null);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Game state
+  const [gameState, setGameState] = useState<GameState>("lobby");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [answeredCount, setAnsweredCount] = useState(0);
+  const [currentAnswers, setCurrentAnswers] = useState<Answer[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [scoringComplete, setScoringComplete] = useState(false);
+  const [answerRevealed, setAnswerRevealed] = useState(false);
+  const [suspenseMode, setSuspenseMode] = useState(false);
+  const [showSuspenseModal, setShowSuspenseModal] = useState(false);
+
+  // Refs to avoid stale closures
+  const playersRef = useRef<Player[]>(players);
+  playersRef.current = players;
+  const questionsRef = useRef<Question[]>(questions);
+  questionsRef.current = questions;
+  const currentQuestionIndexRef = useRef(currentQuestionIndex);
+  currentQuestionIndexRef.current = currentQuestionIndex;
+
+  const currentQuestion = useMemo(
+    () => questions[currentQuestionIndex] ?? null,
+    [questions, currentQuestionIndex]
+  );
+
+  // Realtime channel
+  const { broadcast } = useRoomChannel(roomCode);
+
+  // Timer
+  const handleTimerTick = useCallback(
+    (remaining: number) => {
+      if (!currentQuestion) return;
+      broadcast("timer_tick", {
+        time_remaining: remaining,
+        time_limit: currentQuestion.time_limit,
+      });
+    },
+    [broadcast, currentQuestion]
+  );
+
+  const handleTimerComplete = useCallback(() => {
+    setTimerRunning(false);
+    setGameState("question_end");
+    broadcast("game_state_change", {
+      state: "question_end",
+      current_question_index: currentQuestionIndexRef.current,
+    });
+  }, [broadcast]);
+
+  const { timeRemaining, reset: resetTimer } = useTimer(
+    currentQuestion?.time_limit ?? 15,
+    timerRunning,
+    handleTimerTick,
+    handleTimerComplete
+  );
+
+  // ---------- DATA FETCHING ----------
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data: roomData, error: roomErr } = await supabase
+          .from("rooms")
+          .select("*")
+          .eq("room_code", roomCode)
+          .single();
+
+        if (roomErr || !roomData) {
+          setError("Room not found.");
+          setLoading(false);
+          return;
+        }
+        setRoom(roomData as Room);
+
+        const { data: quizData, error: quizErr } = await supabase
+          .from("quizzes")
+          .select("*")
+          .eq("room_id", roomData.id)
+          .single();
+
+        if (quizErr || !quizData) {
+          setError("Quiz not found for this room.");
+          setLoading(false);
+          return;
+        }
+        setQuiz(quizData as Quiz);
+
+        const { data: questionsData, error: questionsErr } = await supabase
+          .from("questions")
+          .select("*")
+          .eq("quiz_id", quizData.id)
+          .order("order_index", { ascending: true });
+
+        if (questionsErr) {
+          setError("Failed to load questions.");
+          setLoading(false);
+          return;
+        }
+        setQuestions((questionsData as Question[]) || []);
+
+        const { data: playersData } = await supabase
+          .from("players")
+          .select("*")
+          .eq("room_id", roomData.id)
+          .order("joined_at", { ascending: true });
+
+        if (playersData) {
+          setPlayers(playersData as Player[]);
+        }
+
+        if (roomData.status === "finished") {
+          setGameState("finished");
+        }
+      } catch {
+        setError("Failed to load game data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [roomCode]);
+
+  // ---------- PLAYER SUBSCRIPTION ----------
+
+  const handlePlayerJoin = useCallback((payload: Record<string, unknown>) => {
+    const newPlayer = payload as unknown as Player;
+    setPlayers((prev) => {
+      if (prev.some((p) => p.id === newPlayer.id)) return prev;
+      return [...prev, newPlayer];
+    });
+  }, []);
+
+  usePlayersSubscription(room?.id ?? "", handlePlayerJoin);
+
+  // ---------- ANSWER SUBSCRIPTION ----------
+
+  const handleNewAnswer = useCallback((payload: Record<string, unknown>) => {
+    const answer = payload as unknown as Answer;
+    setCurrentAnswers((prev) => {
+      if (prev.some((a) => a.id === answer.id)) return prev;
+      return [...prev, answer];
+    });
+    setAnsweredCount((prev) => prev + 1);
+  }, []);
+
+  useAnswersSubscription(currentQuestion?.id ?? "", handleNewAnswer);
+
+  // ---------- GAME ACTIONS ----------
+
+  const startGame = async () => {
+    if (!room || players.length === 0) return;
+
+    await supabase
+      .from("rooms")
+      .update({ status: "active" })
+      .eq("id", room.id);
+
+    setRoom((prev) => (prev ? { ...prev, status: "active" } : prev));
+    startQuestion(0);
+  };
+
+  const startQuestion = (index: number) => {
+    const question = questionsRef.current[index];
+    if (!question) return;
+
+    setCurrentQuestionIndex(index);
+    setAnsweredCount(0);
+    setCurrentAnswers([]);
+    setScoringComplete(false);
+    setAnswerRevealed(false);
+    setGameState("question_start");
+    setTimerRunning(true);
+    resetTimer(question.time_limit);
+
+    const safeQuestion: Partial<Question> = {
+      id: question.id,
+      quiz_id: question.quiz_id,
+      type: question.type,
+      question_text: question.question_text,
+      options: question.options,
+      time_limit: question.time_limit,
+      points_base: question.points_base,
+      order_index: question.order_index,
+      image_url: question.image_url,
+      is_joker: question.is_joker,
+      slider_min: question.slider_min,
+      slider_max: question.slider_max,
+      video_url: question.video_url,
+      video_start_seconds: question.video_start_seconds,
+      video_end_seconds: question.video_end_seconds,
+      audio_url: question.audio_url,
+    };
+
+    broadcast("question_reveal", {
+      question: safeQuestion,
+      question_number: index + 1,
+      total_questions: questionsRef.current.length,
+    });
+
+    broadcast("game_state_change", {
+      state: "question_start",
+      current_question_index: index,
+    });
+  };
+
+  // ---------- SCORING ----------
+
+  useEffect(() => {
+    if (gameState !== "question_end" || !currentQuestion || scoringComplete)
+      return;
+
+    async function scoreAnswers() {
+      const question = currentQuestion!;
+      const answers = [...currentAnswers];
+      const updates: {
+        id: string;
+        is_correct: boolean;
+        points_earned: number;
+      }[] = [];
+      const playerPointsMap: Record<string, number> = {};
+
+      for (const answer of answers) {
+        let points = 0;
+        let isCorrect = false;
+
+        const timeTakenMs = answer.time_taken_ms || 0;
+        const timeLimitMs = question.time_limit * 1000;
+        const timeRemainingMs = Math.max(0, timeLimitMs - timeTakenMs);
+
+        switch (question.type) {
+          case "multiple_choice":
+          case "true_false":
+          case "image_question":
+          case "video_question":
+          case "audio_question": {
+            const result = scoreStandardQuestion(
+              answer.answer_value,
+              question.correct_answer,
+              timeRemainingMs,
+              timeLimitMs,
+              question.is_joker,
+              question.points_base
+            );
+            points = result.points;
+            isCorrect = result.isCorrect;
+            break;
+          }
+          case "slider": {
+            const playerVal = parseFloat(answer.answer_value);
+            const correctVal = parseFloat(question.correct_answer);
+            if (!isNaN(playerVal) && !isNaN(correctVal)) {
+              points = calculateSliderPoints(
+                playerVal,
+                correctVal,
+                question.slider_min ?? 0,
+                question.slider_max ?? 100,
+                timeRemainingMs,
+                timeLimitMs,
+                question.points_base
+              );
+              points = applyJokerMultiplier(points, question.is_joker);
+              isCorrect = points > question.points_base * 0.5;
+            }
+            break;
+          }
+          case "type_in": {
+            const result = calculateTypeInPoints(
+              answer.answer_value,
+              question.correct_answer,
+              timeRemainingMs,
+              timeLimitMs,
+              question.points_base
+            );
+            points = applyJokerMultiplier(result.points, question.is_joker);
+            isCorrect = result.isCorrect;
+            break;
+          }
+        }
+
+        updates.push({
+          id: answer.id,
+          is_correct: isCorrect,
+          points_earned: points,
+        });
+
+        if (points > 0) {
+          playerPointsMap[answer.player_id] =
+            (playerPointsMap[answer.player_id] || 0) + points;
+        }
+      }
+
+      for (const u of updates) {
+        await supabase
+          .from("answers")
+          .update({ is_correct: u.is_correct, points_earned: u.points_earned })
+          .eq("id", u.id);
+      }
+
+      for (const [playerId, pointsToAdd] of Object.entries(playerPointsMap)) {
+        const player = playersRef.current.find((p) => p.id === playerId);
+        if (player) {
+          const newScore = player.score + pointsToAdd;
+          await supabase
+            .from("players")
+            .update({ score: newScore })
+            .eq("id", playerId);
+        }
+      }
+
+      if (room) {
+        const { data: freshPlayers } = await supabase
+          .from("players")
+          .select("*")
+          .eq("room_id", room.id)
+          .order("score", { ascending: false });
+
+        if (freshPlayers) {
+          setPlayers(freshPlayers as Player[]);
+        }
+      }
+
+      setScoringComplete(true);
+    }
+
+    scoreAnswers();
+  }, [gameState, currentQuestion, currentAnswers, scoringComplete, room]);
+
+  // ---------- LEADERBOARD ----------
+
+  const buildLeaderboard = useCallback((): LeaderboardEntry[] => {
+    const sorted = [...players].sort((a, b) => b.score - a.score);
+    return sorted.map((p, idx) => ({
+      player_id: p.id,
+      player_name: p.name,
+      horse_name: p.horse_name,
+      score: p.score,
+      rank: idx + 1,
+    }));
+  }, [players]);
+
+  const revealAnswer = async () => {
+    if (!currentQuestion) return;
+
+    // Build playerResults from currentAnswers (already scored)
+    const playerResults: Record<string, { isCorrect: boolean; pointsEarned: number }> = {};
+
+    for (const answer of currentAnswers) {
+      // Fetch the scored answer from DB to get is_correct and points_earned
+      const { data } = await supabase
+        .from("answers")
+        .select("is_correct, points_earned")
+        .eq("id", answer.id)
+        .single();
+
+      if (data) {
+        playerResults[answer.player_id] = {
+          isCorrect: data.is_correct,
+          pointsEarned: data.points_earned,
+        };
+      }
+    }
+
+    broadcast("answer_revealed", {
+      questionId: currentQuestion.id,
+      correctAnswer: currentQuestion.correct_answer,
+      playerResults,
+    });
+
+    setAnswerRevealed(true);
+  };
+
+  const showLeaderboard = () => {
+    const entries = buildLeaderboard();
+    setLeaderboard(entries);
+    setGameState("leaderboard");
+
+    broadcast("leaderboard_update", { leaderboard: entries });
+    broadcast("game_state_change", {
+      state: "leaderboard",
+      current_question_index: currentQuestionIndex,
+    });
+  };
+
+  const nextQuestion = () => {
+    const nextIdx = currentQuestionIndex + 1;
+    if (nextIdx < questions.length) {
+      startQuestion(nextIdx);
+    } else {
+      finishGame();
+    }
+  };
+
+  const finishGame = async () => {
+    setGameState("finished");
+
+    const entries = buildLeaderboard();
+    setLeaderboard(entries);
+
+    broadcast("leaderboard_update", { leaderboard: entries });
+    broadcast("game_state_change", { state: "finished" });
+
+    if (room) {
+      await supabase
+        .from("rooms")
+        .update({ status: "finished" })
+        .eq("id", room.id);
+      setRoom((prev) => (prev ? { ...prev, status: "finished" } : prev));
+    }
+  };
+
+  // ---------- ANSWER DISTRIBUTION DATA ----------
+
+  const answerDistribution = useMemo(() => {
+    if (!currentQuestion) return [];
+
+    const counts: Record<string, number> = {};
+
+    if (
+      currentQuestion.type === "multiple_choice" ||
+      currentQuestion.type === "image_question" ||
+      currentQuestion.type === "video_question" ||
+      currentQuestion.type === "audio_question"
+    ) {
+      (currentQuestion.options || []).forEach((opt) => {
+        counts[opt] = 0;
+      });
+    } else if (currentQuestion.type === "true_false") {
+      counts["True"] = 0;
+      counts["False"] = 0;
+    }
+
+    currentAnswers.forEach((a) => {
+      counts[a.answer_value] = (counts[a.answer_value] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(([answer_value, count]) => ({
+      answer_value,
+      count,
+    }));
+  }, [currentQuestion, currentAnswers]);
+
+  // ---------- HELPERS ----------
+
+  const joinUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/play/${roomCode}`
+      : "";
+
+  const isLastQuestion = currentQuestionIndex >= questions.length - 1;
+
+  // Timer circle calculations
+  const timerFraction =
+    currentQuestion && currentQuestion.time_limit > 0
+      ? timeRemaining / currentQuestion.time_limit
+      : 0;
+  const circumference = 2 * Math.PI * 20;
+  const timerDashoffset = circumference * (1 - timerFraction);
+
+  // ---------- LOADING / ERROR ----------
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center">
+        <motion.div
+          className="w-12 h-12 border-4 border-surface/20 border-t-surface rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+    );
+  }
+
+  if (error || !room || !quiz) {
+    return (
+      <div className="min-h-screen bg-primary flex items-center justify-center px-4">
+        <AnimatedContainer className="text-center">
+          <h1 className="text-3xl font-bold text-white mb-4">
+            {error || "Something went wrong"}
+          </h1>
+          <Button variant="coral" size="lg" onClick={() => router.push("/")}>
+            Back to Home
+          </Button>
+        </AnimatedContainer>
+      </div>
+    );
+  }
+
+  // ---------- LOBBY STATE ----------
+
+  if (gameState === "lobby") {
+    return (
+      <Lobby
+        players={players.map((p) => ({
+          name: p.name,
+          horse_name: p.horse_name,
+        }))}
+        roomCode={roomCode}
+        joinUrl={joinUrl}
+        quizTitle={quiz.title}
+        questionCount={questions.length}
+        onStart={startGame}
+        canStart={players.length > 0}
+      />
+    );
+  }
+
+  // ---------- LIVE SESSION / LEADERBOARD / FINISHED ----------
+
+  return (
+    <div className="bg-surface text-on-surface min-h-screen flex flex-col overflow-hidden">
+      {/* Top Header */}
+      <header className="bg-surface-bright flex justify-between items-center w-full px-8 py-4 z-50">
+        <div className="flex items-center gap-6">
+          <span className="text-xl font-bold text-primary-container tracking-tighter">
+            QuizTime
+          </span>
+          <div className="h-6 w-px bg-outline-variant/20" />
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-outline">
+              Current Session
+            </span>
+            <span className="text-sm font-bold text-primary">{quiz.title}</span>
+          </div>
+        </div>
+
+        {/* Center: Timer & Question Counter */}
+        {(gameState === "question_start" || gameState === "question_end") &&
+          currentQuestion && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 glass-panel px-10 py-3 rounded-full shadow-[0px_20px_40px_rgba(27,43,94,0.06)]">
+              <div className="flex flex-col items-center">
+                <span className="text-[10px] font-bold text-primary opacity-60 uppercase tracking-widest">
+                  Progress
+                </span>
+                <span className="text-lg font-black text-primary">
+                  Question {currentQuestionIndex + 1} of {questions.length}
+                </span>
+              </div>
+              <div className="h-10 w-0.5 bg-primary/10" />
+              <div className="flex items-center gap-4">
+                <div className="relative flex items-center justify-center">
+                  <svg className="w-12 h-12 -rotate-90">
+                    <circle
+                      className="text-surface-container-highest"
+                      cx="24"
+                      cy="24"
+                      fill="transparent"
+                      r="20"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <circle
+                      className="text-tertiary-fixed-dim"
+                      cx="24"
+                      cy="24"
+                      fill="transparent"
+                      r="20"
+                      stroke="currentColor"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={timerDashoffset}
+                      strokeWidth="4"
+                      style={{ transition: "stroke-dashoffset 0.9s linear" }}
+                    />
+                  </svg>
+                  <span className="absolute text-xl font-black text-primary">
+                    {timeRemaining}
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-primary">
+                  Seconds Left
+                </span>
+              </div>
+            </div>
+          )}
+
+        <div className="flex items-center gap-4">
+          {gameState === "question_start" && (
+            <button
+              onClick={() => {
+                setTimerRunning(false);
+                setGameState("question_end");
+                broadcast("game_state_change", {
+                  state: "question_end",
+                  current_question_index: currentQuestionIndex,
+                });
+              }}
+              className="px-6 py-2.5 rounded-xl text-sm font-bold text-primary border border-primary/10 hover:bg-surface-container-low transition-colors"
+            >
+              End Early
+            </button>
+          )}
+          <span className="text-sm font-bold text-outline">
+            {players.length} players
+          </span>
+        </div>
+      </header>
+
+      <AnimatePresence mode="wait">
+        {/* ===== QUESTION START / QUESTION END ===== */}
+        {(gameState === "question_start" || gameState === "question_end") &&
+          currentQuestion && (
+            <motion.main
+              key={`question-${currentQuestionIndex}-${gameState}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 flex p-8 gap-8 max-w-[1600px] mx-auto w-full overflow-hidden"
+            >
+              {/* Left: Question & Media */}
+              <section className="flex-[1.2] flex flex-col gap-6">
+                <div className="bg-surface-container-lowest p-10 rounded-xl shadow-[0px_20px_40px_rgba(27,43,94,0.04)] flex-1 flex flex-col justify-between relative overflow-hidden">
+                  <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+                  <div>
+                    <span className="inline-block px-4 py-1.5 rounded-full bg-primary text-on-primary text-[10px] font-bold uppercase tracking-widest mb-6">
+                      {currentQuestion.type.replace("_", " ")}
+                      {currentQuestion.is_joker && " • Joker"}
+                    </span>
+                    <h1 className="text-4xl font-bold text-primary leading-tight tracking-tight max-w-2xl">
+                      {currentQuestion.question_text}
+                    </h1>
+                  </div>
+
+                  {/* Image if present */}
+                  {currentQuestion.image_url && (
+                    <div className="mt-8 relative group rounded-lg overflow-hidden h-[400px]">
+                      <img
+                        alt="Question media"
+                        className="w-full h-full object-cover rounded-lg shadow-lg"
+                        src={currentQuestion.image_url}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent" />
+                    </div>
+                  )}
+
+                  {/* Video player */}
+                  {currentQuestion.type === "video_question" &&
+                    currentQuestion.video_url && (
+                      <div className="mt-8">
+                        <VideoPlayer
+                          videoUrl={currentQuestion.video_url}
+                          startSeconds={currentQuestion.video_start_seconds}
+                          endSeconds={currentQuestion.video_end_seconds}
+                        />
+                      </div>
+                    )}
+
+                  {/* Audio player */}
+                  {currentQuestion.type === "audio_question" &&
+                    currentQuestion.audio_url && (
+                      <div className="mt-8">
+                        <AudioPlayer audioUrl={currentQuestion.audio_url} />
+                      </div>
+                    )}
+
+                  {/* Correct answer reveal overlay */}
+                  {gameState === "question_end" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-8 bg-emerald-50 border-2 border-emerald-200 rounded-xl p-6 text-center"
+                    >
+                      <p className="text-sm font-bold text-emerald-600 mb-1">
+                        Correct Answer
+                      </p>
+                      <p className="text-3xl font-black text-emerald-700">
+                        {currentQuestion.correct_answer}
+                      </p>
+                      {currentQuestion.is_joker && (
+                        <span className="inline-block mt-2 bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold px-4 py-1 rounded-2xl text-sm">
+                          Joker Round - 2x Points!
+                        </span>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              </section>
+
+              {/* Right: Live Distribution */}
+              <section className="flex-1 flex flex-col gap-6">
+                <AnswerDistribution
+                  answers={answerDistribution}
+                  correctAnswer={currentQuestion.correct_answer}
+                  questionType={currentQuestion.type}
+                  totalPlayers={players.length}
+                />
+
+                {/* Action buttons */}
+                {gameState === "question_end" && scoringComplete && !answerRevealed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-4"
+                  >
+                    <button
+                      onClick={revealAnswer}
+                      className="flex-1 flex items-center justify-center gap-3 py-4 bg-secondary-container text-white rounded-xl font-extrabold text-lg shadow-[0px_10px_25px_rgba(255,107,107,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        visibility
+                      </span>
+                      Reveal Answer
+                    </button>
+                  </motion.div>
+                )}
+
+                {gameState === "question_end" && answerRevealed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col gap-3"
+                  >
+                    <div className="flex items-center justify-center gap-2 py-2 text-emerald-600 font-bold text-sm">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Revealed
+                    </div>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={showLeaderboard}
+                        className="flex-1 py-4 rounded-xl font-bold text-sm text-primary border border-primary/10 hover:bg-surface-container-low transition-colors"
+                      >
+                        Show Leaderboard
+                      </button>
+                      {!isLastQuestion ? (
+                        <button
+                          onClick={nextQuestion}
+                          className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-on-primary rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                          Next Question
+                          <span className="material-symbols-outlined">
+                            arrow_forward
+                          </span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={finishGame}
+                          className="flex-1 py-4 bg-secondary-container text-white rounded-xl font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                          Finish Game
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {gameState === "question_end" && !scoringComplete && (
+                  <div className="flex justify-center py-4">
+                    <motion.div
+                      className="flex items-center gap-2 text-outline"
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <motion.span
+                        className="inline-block w-4 h-4 border-2 border-outline/30 border-t-outline rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      />
+                      Calculating scores...
+                    </motion.div>
+                  </div>
+                )}
+              </section>
+            </motion.main>
+          )}
+
+        {/* ===== LEADERBOARD ===== */}
+        {gameState === "leaderboard" && (
+          <motion.main
+            key="leaderboard"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex-1 p-8 max-w-4xl mx-auto w-full"
+          >
+            <h2 className="text-3xl font-bold text-primary text-center mb-8">
+              Leaderboard
+            </h2>
+
+            <div className="space-y-3">
+              {leaderboard.map((entry, idx) => (
+                <motion.div
+                  key={entry.player_id}
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.08 }}
+                  className={`flex items-center gap-4 rounded-xl p-4 ${
+                    idx === 0
+                      ? "bg-secondary-container/10 border-2 border-secondary-container/30"
+                      : idx < 3
+                      ? "bg-tertiary-fixed/20 border border-tertiary-fixed-dim/20"
+                      : "bg-surface-container-low border border-outline-variant/10"
+                  }`}
+                >
+                  <span
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+                      idx === 0
+                        ? "bg-secondary-container text-white"
+                        : idx === 1
+                        ? "bg-tertiary-fixed-dim text-on-tertiary-fixed"
+                        : idx === 2
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container-high text-on-surface-variant"
+                    }`}
+                  >
+                    {entry.rank}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-primary font-bold truncate">
+                      {entry.player_name}
+                    </p>
+                    <p className="text-outline text-sm truncate">
+                      {entry.horse_name}
+                    </p>
+                  </div>
+                  <span className="text-primary font-mono font-bold text-xl">
+                    {entry.score}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Suspense controls */}
+            {isInSuspensePhase(
+              currentQuestionIndex + 1,
+              questions.length
+            ) && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 bg-tertiary-fixed/10 border border-tertiary-fixed-dim/30 rounded-2xl p-6"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-tertiary-fixed-dim font-extrabold uppercase tracking-wider text-sm flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse" />
+                    Suspense Mode
+                  </h3>
+                  <button
+                    onClick={() => setShowSuspenseModal(true)}
+                    className="text-sm font-bold text-primary hover:text-primary-container transition-colors underline"
+                  >
+                    Open Controls
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    broadcast("final_reveal_start", {});
+                  }}
+                  className="w-full py-3 rounded-xl font-bold text-lg bg-secondary-container text-white shadow-[0px_10px_20px_rgba(255,107,107,0.3)] hover:translate-y-[-2px] active:scale-95 transition-all"
+                >
+                  Start Final Reveal
+                </button>
+              </motion.div>
+            )}
+
+            <div className="flex justify-center gap-4 mt-6 flex-wrap">
+              {!isInSuspensePhase(
+                currentQuestionIndex + 1,
+                questions.length
+              ) && (
+                <>
+                  <button
+                    className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                      suspenseMode
+                        ? "bg-secondary-container text-white"
+                        : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+                    }`}
+                    onClick={() => {
+                      const next = !suspenseMode;
+                      setSuspenseMode(next);
+                      broadcast("suspense_mode", { enabled: next });
+                    }}
+                  >
+                    {suspenseMode ? "Suspense ON" : "Suspense Mode"}
+                  </button>
+                  <button
+                    className="px-5 py-2.5 rounded-xl font-bold text-sm bg-tertiary-fixed-dim text-on-tertiary-fixed hover:opacity-90 transition-opacity"
+                    onClick={() => {
+                      broadcast("final_reveal_start", {});
+                    }}
+                  >
+                    Final Reveal
+                  </button>
+                </>
+              )}
+              {!isLastQuestion ? (
+                <Button variant="primary" size="lg" onClick={nextQuestion}>
+                  Next Question
+                </Button>
+              ) : (
+                <Button variant="coral" size="lg" onClick={finishGame}>
+                  Finish Game
+                </Button>
+              )}
+            </div>
+          </motion.main>
+        )}
+
+        {/* ===== FINISHED ===== */}
+        {gameState === "finished" && (
+          <motion.main
+            key="finished"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex-1 p-8 max-w-4xl mx-auto w-full text-center"
+          >
+            <motion.h2
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-5xl font-extrabold text-primary mb-2"
+            >
+              Game Over!
+            </motion.h2>
+            <p className="text-outline text-xl mb-10">
+              {quiz.title} - Final Results
+            </p>
+
+            <div className="space-y-3 mb-10">
+              {(leaderboard.length > 0 ? leaderboard : buildLeaderboard()).map(
+                (entry, idx) => (
+                  <motion.div
+                    key={entry.player_id}
+                    initial={{ opacity: 0, x: -30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className={`flex items-center gap-4 rounded-xl p-5 ${
+                      idx === 0
+                        ? "bg-secondary-container/10 border-2 border-secondary-container/40 shadow-lg shadow-secondary-container/10"
+                        : idx < 3
+                        ? "bg-tertiary-fixed/20 border border-tertiary-fixed-dim/20"
+                        : "bg-surface-container-low border border-outline-variant/10"
+                    }`}
+                  >
+                    <span
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${
+                        idx === 0
+                          ? "bg-secondary-container text-white"
+                          : idx === 1
+                          ? "bg-tertiary-fixed-dim text-on-tertiary-fixed"
+                          : idx === 2
+                          ? "bg-primary text-on-primary"
+                          : "bg-surface-container-high text-on-surface-variant"
+                      }`}
+                    >
+                      {entry.rank}
+                    </span>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p
+                        className={`font-bold truncate ${
+                          idx === 0
+                            ? "text-secondary text-xl"
+                            : "text-primary text-lg"
+                        }`}
+                      >
+                        {entry.player_name}
+                      </p>
+                      <p className="text-outline text-sm truncate">
+                        {entry.horse_name}
+                      </p>
+                    </div>
+                    <span
+                      className={`font-mono font-bold ${
+                        idx === 0
+                          ? "text-secondary text-3xl"
+                          : "text-primary text-xl"
+                      }`}
+                    >
+                      {entry.score}
+                    </span>
+                  </motion.div>
+                )
+              )}
+            </div>
+
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => router.push("/")}
+            >
+              Back to Home
+            </Button>
+          </motion.main>
+        )}
+      </AnimatePresence>
+
+      {/* Bottom Controls Bar (during question phases) */}
+      {gameState === "question_start" && currentQuestion && (
+        <footer className="bg-surface-container-lowest px-12 py-6 flex justify-between items-center shadow-[0px_-10px_30px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-10">
+            <label className="flex items-center cursor-pointer group">
+              <div className="relative">
+                <input className="sr-only peer" type="checkbox" readOnly />
+                <div className="w-12 h-6 bg-surface-container-high rounded-full peer peer-checked:bg-primary-container transition-colors" />
+                <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-6" />
+              </div>
+              <span className="ml-3 text-sm font-bold text-primary group-hover:text-primary-container transition-colors">
+                Show Leaderboard After Reveal
+              </span>
+            </label>
+          </div>
+          <button
+            onClick={() => {
+              setTimerRunning(false);
+              setGameState("question_end");
+              broadcast("game_state_change", {
+                state: "question_end",
+                current_question_index: currentQuestionIndex,
+              });
+            }}
+            className="flex items-center gap-3 px-10 py-4 bg-secondary-container text-white rounded-xl font-extrabold text-lg shadow-[0px_10px_25px_rgba(255,107,107,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              timer_off
+            </span>
+            End Timer
+          </button>
+        </footer>
+      )}
+
+      {/* Suspense Modal */}
+      <SuspenseModal
+        isOpen={showSuspenseModal}
+        onClose={() => setShowSuspenseModal(false)}
+        suspenseEnabled={suspenseMode}
+        onToggleSuspense={() => {
+          const next = !suspenseMode;
+          setSuspenseMode(next);
+          broadcast("suspense_mode", { enabled: next });
+        }}
+        onStartReveal={() => {
+          setShowSuspenseModal(false);
+          broadcast("final_reveal_start", {});
+        }}
+        leaderboard={leaderboard.length > 0 ? leaderboard : buildLeaderboard()}
+      />
+    </div>
+  );
+}
