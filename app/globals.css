@@ -98,3 +98,34 @@ body {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(16px);
 }
+
+/* End game podium shimmer for 1st place */
+@keyframes podium-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.podium-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 185, 95, 0.2) 25%,
+    rgba(255, 185, 95, 0.4) 50%,
+    rgba(255, 185, 95, 0.2) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: podium-shimmer 1s ease-in-out forwards;
+}
+
+/* End game confetti */
+@keyframes endgame-confetti {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(var(--confetti-rot, 720deg));
+    opacity: 0;
+  }
+}

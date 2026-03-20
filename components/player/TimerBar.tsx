@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 
 interface TimerBarProps {
@@ -22,13 +23,6 @@ export default function TimerBar({
   const isCritical = timeRemaining <= 2;
 
   const barColor = isUrgent ? "#FF6B6B" : "#FFB95F";
-  const pulseClass = reduced
-    ? ""
-    : isCritical
-    ? "animate-[timer-pulse_0.5s_ease-in-out_infinite]"
-    : isUrgent
-    ? "animate-[timer-pulse_1s_ease-in-out_infinite]"
-    : "";
 
   return (
     <div className="w-full">
@@ -41,9 +35,17 @@ export default function TimerBar({
         ) : (
           <span />
         )}
-        <span
-          className={`flex items-center gap-1.5 font-bold transition-colors duration-300 ${
-            isUrgent ? "text-[#FF6B6B] font-extrabold" : "text-[#021549]"
+        <motion.span
+          animate={
+            reduced
+              ? undefined
+              : {
+                  color: isUrgent ? "#FF6B6B" : "#021549",
+                }
+          }
+          transition={{ duration: 0.3 }}
+          className={`flex items-center gap-1.5 transition-colors duration-300 ${
+            isUrgent ? "font-extrabold" : "font-bold"
           }`}
         >
           <svg
@@ -59,27 +61,39 @@ export default function TimerBar({
             <polyline points="12 6 12 12 16 14" />
           </svg>
           {timeRemaining}
-        </span>
+        </motion.span>
       </div>
 
       {/* Progress bar */}
-      <div className={`w-full h-2.5 rounded-full bg-[#e2e3e0] overflow-hidden ${pulseClass}`}>
-        <div
-          className="h-full rounded-full transition-[width,background-color] duration-[900ms,300ms] ease-linear"
+      <motion.div
+        animate={
+          reduced || !isUrgent
+            ? { scale: 1 }
+            : {
+                scale: [1, 1.02, 1],
+              }
+        }
+        transition={
+          isUrgent
+            ? {
+                duration: isCritical ? 0.4 : 1,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+            : undefined
+        }
+        className="w-full h-2.5 rounded-full bg-[#e2e3e0] overflow-hidden"
+      >
+        <motion.div
+          className="h-full rounded-full"
+          animate={{ backgroundColor: barColor }}
+          transition={{ duration: 0.3 }}
           style={{
             width: `${fraction * 100}%`,
-            backgroundColor: barColor,
+            transition: "width 900ms linear",
           }}
         />
-      </div>
-
-      {/* Urgency pulse keyframes */}
-      <style jsx>{`
-        @keyframes timer-pulse {
-          0%, 100% { transform: scaleY(1); }
-          50% { transform: scaleY(1.02) scaleX(1.005); }
-        }
-      `}</style>
+      </motion.div>
     </div>
   );
 }

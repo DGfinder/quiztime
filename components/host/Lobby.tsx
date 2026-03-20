@@ -152,8 +152,8 @@ export default function Lobby({
               {players.map((player, idx) => (
                 <motion.div
                   key={`${player.name}-${idx}`}
-                  initial={reduced ? undefined : { opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={reduced ? undefined : { opacity: 0, scale: 0.8, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{
                     delay: idx * 0.05,
                     type: "spring",

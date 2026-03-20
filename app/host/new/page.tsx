@@ -322,7 +322,7 @@ export default function NewQuizPage() {
                   key={idx}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -2, boxShadow: "0 4px 12px rgba(27,43,94,0.08)" }}
+                  whileHover={{ y: -2, boxShadow: "0 8px 25px rgba(27,43,94,0.15)" }}
                   transition={{ delay: idx * 0.03 }}
                   onClick={() => setSelectedIndex(idx)}
                   className={`p-3 rounded-xl flex gap-3 group cursor-pointer transition-all ${

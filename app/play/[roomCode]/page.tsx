@@ -777,7 +777,7 @@ export default function PlayPage() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="bg-white rounded-3xl shadow-lg px-10 py-8 text-center"
+                className="bg-white rounded-3xl shadow-lg px-10 py-8 text-center w-full max-w-xs"
               >
                 <p className="text-ink/50 text-sm font-medium mb-1">
                   Final Score
@@ -787,6 +787,49 @@ export default function PlayPage() {
                 </p>
                 <p className="text-ink/40 text-sm mt-1">points</p>
               </motion.div>
+
+              {/* Mini leaderboard on player end screen */}
+              {leaderboard.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="w-full max-w-xs bg-white rounded-3xl shadow-md p-4 space-y-1.5"
+                >
+                  {leaderboard.slice(0, 5).map((entry, i) => {
+                    const isMe = entry.player_id === playerId;
+                    return (
+                      <div
+                        key={entry.player_id}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${
+                          isMe
+                            ? "bg-navy text-white"
+                            : "bg-cream text-ink"
+                        }`}
+                      >
+                        <span className="font-extrabold w-6 text-center">
+                          {entry.rank}
+                        </span>
+                        <span
+                          className={`flex-1 truncate font-bold ${
+                            isMe ? "text-white" : "text-navy"
+                          }`}
+                        >
+                          {entry.player_name}
+                          {isMe && " (you)"}
+                        </span>
+                        <span
+                          className={`font-bold ${
+                            isMe ? "text-amber" : "text-coral"
+                          }`}
+                        >
+                          {entry.score.toLocaleString()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
 
               {playerRank !== null && playerRank <= 3 && (
                 <motion.div
@@ -815,10 +858,19 @@ export default function PlayPage() {
                 </motion.div>
               )}
 
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="text-ink/40 font-medium text-sm"
+              >
+                Thanks for playing! 🐎
+              </motion.p>
+
               <Button
                 variant="primary"
                 size="lg"
-                className="w-full max-w-xs mt-4"
+                className="w-full max-w-xs mt-2"
                 onClick={() => router.push("/")}
               >
                 Back to Home

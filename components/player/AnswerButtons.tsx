@@ -22,8 +22,8 @@ const buttonStyles = [
 ];
 
 const shakeAnimation = {
-  x: [0, -4, 4, -4, 0],
-  transition: { duration: 0.4, ease: "easeInOut" as const },
+  x: [0, -6, 6, -6, 6, -3, 3, 0],
+  transition: { duration: 0.5, ease: "easeInOut" as const },
 };
 
 export default function AnswerButtons({
@@ -148,23 +148,19 @@ export default function AnswerButtons({
                     : isRevealed
                     ? isCorrectOption
                       ? {
-                          scale: [1, 1.05, 1.0],
-                          boxShadow: [
-                            "0 0 0px rgba(34,197,94,0)",
-                            "0 0 30px rgba(34,197,94,0.6)",
-                            "0 0 0px rgba(34,197,94,0)",
-                          ],
+                          scale: [1, 1.08, 1.0],
+                          boxShadow: "0 0 30px rgba(34,197,94,0.5)",
                         }
                       : isWrongSelected
                       ? shakeAnimation
-                      : { opacity: 0.4, scale: 0.95, filter: "grayscale(80%)" }
+                      : { opacity: 0.35, scale: 0.95, filter: "grayscale(60%)" }
                     : undefined
                 }
                 transition={
                   isRevealed
                     ? isCorrectOption
-                      ? { duration: 0.5, ease: "easeOut" }
-                      : { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                      ? { type: "spring", stiffness: 300, damping: 15 }
+                      : { duration: 0.3, delay: 0.08, ease: "easeOut" }
                     : undefined
                 }
                 className={`rounded-xl p-6 min-h-[80px] ${

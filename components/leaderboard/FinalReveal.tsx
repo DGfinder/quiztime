@@ -83,7 +83,7 @@ function TypewriterText({ text, onComplete }: { text: string; onComplete?: () =>
         clearInterval(interval);
         onComplete?.();
       }
-    }, 50);
+    }, 40);
     return () => clearInterval(interval);
   }, [text, onComplete]);
 

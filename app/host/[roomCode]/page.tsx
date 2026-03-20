@@ -35,6 +35,7 @@ import Lobby from "@/components/host/Lobby";
 import SuspenseModal from "@/components/host/SuspenseModal";
 import VideoPlayer from "@/components/host/VideoPlayer";
 import AudioPlayer from "@/components/host/AudioPlayer";
+import EndGame from "@/components/EndGame";
 
 export default function HostControlPanel() {
   const params = useParams();
@@ -710,9 +711,9 @@ export default function HostControlPanel() {
           currentQuestion && (
             <motion.main
               key={`question-${currentQuestionIndex}`}
-              initial={{ opacity: 0, x: 50 }}
+              initial={{ opacity: 0, x: 60 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
+              exit={{ opacity: 0, x: -60 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="flex-1 flex p-8 gap-8 max-w-[1600px] mx-auto w-full overflow-hidden"
             >
@@ -1109,85 +1110,58 @@ export default function HostControlPanel() {
         {gameState === "finished" && (
           <motion.main
             key="finished"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 p-8 max-w-4xl mx-auto w-full text-center"
+            className="flex-1"
           >
-            <motion.h2
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-5xl font-extrabold text-primary mb-2"
-            >
-              Game Over!
-            </motion.h2>
-            <p className="text-outline text-xl mb-10">
-              {quiz.title} - Final Results
-            </p>
-
-            <div className="space-y-3 mb-10">
-              {(leaderboard.length > 0 ? leaderboard : buildLeaderboard()).map(
-                (entry, idx) => (
-                  <motion.div
-                    key={entry.player_id}
-                    initial={{ opacity: 0, x: -30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className={`flex items-center gap-4 rounded-xl p-5 ${
-                      idx === 0
-                        ? "bg-secondary-container/10 border-2 border-secondary-container/40 shadow-lg shadow-secondary-container/10"
-                        : idx < 3
-                        ? "bg-tertiary-fixed/20 border border-tertiary-fixed-dim/20"
-                        : "bg-surface-container-low border border-outline-variant/10"
-                    }`}
-                  >
-                    <span
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${
-                        idx === 0
-                          ? "bg-secondary-container text-white"
-                          : idx === 1
-                          ? "bg-tertiary-fixed-dim text-on-tertiary-fixed"
-                          : idx === 2
-                          ? "bg-primary text-on-primary"
-                          : "bg-surface-container-high text-on-surface-variant"
-                      }`}
-                    >
-                      {entry.rank}
-                    </span>
-                    <div className="flex-1 min-w-0 text-left">
-                      <p
-                        className={`font-bold truncate ${
-                          idx === 0
-                            ? "text-secondary text-xl"
-                            : "text-primary text-lg"
-                        }`}
-                      >
-                        {entry.player_name}
-                      </p>
-                      <p className="text-outline text-sm truncate">
-                        {entry.horse_name}
-                      </p>
-                    </div>
-                    <span
-                      className={`font-mono font-bold ${
-                        idx === 0
-                          ? "text-secondary text-3xl"
-                          : "text-primary text-xl"
-                      }`}
-                    >
-                      {entry.score}
-                    </span>
-                  </motion.div>
-                )
-              )}
-            </div>
-
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => router.push("/")}
-            >
-              Back to Home
-            </Button>
+            <EndGame
+              players={leaderboard.length > 0 ? leaderboard : buildLeaderboard()}
+              quizTitle={quiz.title}
+              totalQuestions={questions.length}
+              isHost={true}
+              onPlayAgain={async () => {
+                if (!room) return;
+                // Reset room to lobby, clear scores
+                await supabase
+                  .from("qt_rooms")
+                  .update({ status: "lobby" })
+                  .eq("id", room.id);
+                // Reset all player scores
+                for (const p of players) {
+                  await supabase
+                    .from("qt_players")
+                    .update({ score: 0 })
+                    .eq("id", p.id);
+                }
+                setPlayers((prev) => prev.map((p) => ({ ...p, score: 0 })));
+                setCurrentQuestionIndex(0);
+                setLeaderboard([]);
+                setGameState("lobby");
+                setRoom((prev) => (prev ? { ...prev, status: "lobby" } : prev));
+                broadcast("game_state_change", { state: "lobby" });
+              }}
+              onNewQuiz={() => router.push("/host/dashboard")}
+              onDownloadResults={() => {
+                const entries = leaderboard.length > 0 ? leaderboard : buildLeaderboard();
+                const lines = [
+                  `${quiz.title} — Final Results`,
+                  `${"=".repeat(40)}`,
+                  "",
+                  ...entries.map(
+                    (e, i) =>
+                      `${i + 1}. ${e.player_name} — ${e.score.toLocaleString()} pts`
+                  ),
+                  "",
+                  `Total players: ${entries.length}`,
+                  `Total questions: ${questions.length}`,
+                ];
+                const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${quiz.title.replace(/\s+/g, "_")}_results.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            />
           </motion.main>
         )}
       </AnimatePresence>

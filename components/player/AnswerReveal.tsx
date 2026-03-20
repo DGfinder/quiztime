@@ -101,22 +101,15 @@ export default function AnswerReveal({
           {/* Points — spring overshoot */}
           <motion.div
             initial={noAnim ? undefined : { y: 20, scale: 0, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
+            animate={{ y: 0, scale: [0, 1.2, 1.0], opacity: 1 }}
             transition={{
               type: "spring",
               stiffness: 200,
               damping: 15,
-              delay: 0.1,
             }}
+            className="text-5xl font-extrabold text-navy inline-block"
           >
-            <motion.span
-              initial={noAnim ? undefined : { scale: 1.2 }}
-              animate={{ scale: 1.0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.3 }}
-              className="text-5xl font-extrabold text-navy inline-block"
-            >
-              +{displayPoints} pts
-            </motion.span>
+            +{displayPoints} pts
           </motion.div>
 
           {/* Subtext */}
@@ -173,12 +166,11 @@ export default function AnswerReveal({
           {/* 0 pts — spring overshoot */}
           <motion.div
             initial={noAnim ? undefined : { y: 20, scale: 0, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
+            animate={{ y: 0, scale: [0, 1.2, 1.0], opacity: 1 }}
             transition={{
               type: "spring",
               stiffness: 200,
               damping: 15,
-              delay: 0.1,
             }}
             className="text-4xl font-bold text-ink/40"
           >
