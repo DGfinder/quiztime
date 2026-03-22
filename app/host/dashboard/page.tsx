@@ -36,7 +36,7 @@ export default function DashboardPage() {
     async function load() {
       try {
         const [t, s] = await Promise.all([
-          getQuizTemplates(id),
+          getQuizTemplates(), // shows all quizzes — internal tool
           getSessionResults(id),
         ]);
         setTemplates(t);

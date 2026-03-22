@@ -310,12 +310,12 @@ export async function getSessionResults(
 
 /** Get templates for a host. */
 export async function getQuizTemplates(
-  hostId: string
+  _hostId?: string
 ): Promise<QuizTemplate[]> {
+  // Show all quizzes — internal tool, no multi-tenant isolation needed
   const { data, error } = await supabase
     .from("qt_quiz_templates")
     .select("*")
-    .eq("host_id", hostId)
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(error.message);
