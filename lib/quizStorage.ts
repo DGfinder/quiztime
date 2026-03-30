@@ -80,7 +80,7 @@ function questionFormToRow(hostId: string, q: QuestionFormData) {
       q.type === "audio_question"
         ? q.options
         : null,
-    correct_answer: q.correct_answer.trim(),
+    correct_answer: q.correct_answer?.trim() || "N/A",
     time_limit: q.time_limit,
     points_base: 1000,
     image_url: q.type === "image_question" ? q.image_url || null : null,

@@ -219,6 +219,12 @@ export default function NewQuizPage() {
       setError("Add at least one question with text.");
       return;
     }
+    // Validate correct answers
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     setError(null);
     setIsSavingDraft(true);
