@@ -163,12 +163,35 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <motion.div
-          className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-        />
+      <div className="min-h-screen bg-surface text-on-surface">
+        <header className="bg-surface-bright border-b border-primary/10 px-8 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <span className="text-xl font-bold text-primary-container tracking-tighter">QuizTime</span>
+            <div className="h-8 w-px bg-outline-variant/30" />
+            <span className="text-sm font-bold text-primary">Dashboard</span>
+          </div>
+          <div className="w-24 h-10 bg-surface-container-high rounded-xl animate-pulse" />
+        </header>
+        <main className="max-w-7xl mx-auto px-8 py-8">
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10">
+                <div className="h-4 w-24 bg-surface-container-high rounded animate-pulse mb-3" />
+                <div className="h-8 w-16 bg-surface-container-high rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-5 flex items-center gap-4">
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-48 bg-surface-container-high rounded animate-pulse" />
+                  <div className="h-3 w-32 bg-surface-container-high rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

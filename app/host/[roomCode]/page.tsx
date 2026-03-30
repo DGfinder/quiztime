@@ -36,6 +36,7 @@ import SuspenseModal from "@/components/host/SuspenseModal";
 import VideoPlayer from "@/components/host/VideoPlayer";
 import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
+import TimerBar from "@/components/player/TimerBar";
 
 export default function HostControlPanel() {
   const params = useParams();
@@ -729,6 +730,11 @@ export default function HostControlPanel() {
                     <h1 className="text-4xl font-bold text-primary leading-tight tracking-tight max-w-2xl">
                       {currentQuestion.question_text}
                     </h1>
+                  </div>
+
+                  {/* Timer bar visible to host */}
+                  <div className="mt-4">
+                    <TimerBar timeRemaining={timeRemaining} timeLimit={currentQuestion.time_limit ?? 15} />
                   </div>
 
                   {/* Image if present */}

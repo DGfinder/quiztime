@@ -209,6 +209,13 @@ export default function QuestionEditor({
           question.type === "image_question" ||
           question.type === "video_question" ||
           question.type === "audio_question") && (
+          <>
+          {!question.correct_answer.trim() && question.question_text.trim() && (
+            <p className="text-amber-600 text-xs font-bold flex items-center gap-1.5 mb-1">
+              <span className="material-symbols-outlined text-sm">warning</span>
+              Select the correct answer below
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {question.options.slice(0, 4).map((opt, i) => (
               <div
@@ -238,7 +245,7 @@ export default function QuestionEditor({
                   }}
                   placeholder="Add answer..."
                 />
-                <label className="relative flex items-center cursor-pointer">
+                <label className="relative flex items-center gap-2 cursor-pointer">
                   <input
                     className="peer sr-only"
                     name={`correct-${index}`}
@@ -246,15 +253,22 @@ export default function QuestionEditor({
                     checked={question.correct_answer === opt && opt !== ""}
                     onChange={() => update({ correct_answer: opt })}
                   />
-                  <div className="w-6 h-6 rounded-full border-2 border-outline-variant peer-checked:border-primary peer-checked:bg-primary transition-all flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full border-2 border-outline-variant peer-checked:border-emerald-500 peer-checked:bg-emerald-500 transition-all flex items-center justify-center">
                     <span className="material-symbols-outlined text-[14px] text-white scale-0 peer-checked:scale-100 transition-transform" style={{ fontVariationSettings: "'wght' 700" }}>
                       check
                     </span>
                   </div>
+                  {question.correct_answer === opt && opt !== "" && (
+                    <span className="text-[10px] font-bold text-emerald-600 whitespace-nowrap flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      Correct
+                    </span>
+                  )}
                 </label>
               </div>
             ))}
           </div>
+          </>
         )}
 
         {/* True / False */}

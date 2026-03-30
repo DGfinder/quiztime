@@ -17,7 +17,7 @@ import type {
 import Image from "next/image";
 import Button from "@/components/shared/Button";
 import AnimatedContainer from "@/components/shared/AnimatedContainer";
-import TimerBar from "@/components/shared/TimerBar";
+import TimerBar from "@/components/player/TimerBar";
 import AnswerButtons from "@/components/player/AnswerButtons";
 import WaitingScreen from "@/components/player/WaitingScreen";
 import AnswerReveal from "@/components/player/AnswerReveal";

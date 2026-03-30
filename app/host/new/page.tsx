@@ -272,6 +272,11 @@ export default function NewQuizPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {error && (
+            <span className="text-error text-xs font-bold max-w-[220px] truncate" title={error}>
+              {error}
+            </span>
+          )}
           <motion.button
             onClick={handleSaveDraft}
             disabled={isSavingDraft || isCreating}
