@@ -250,6 +250,13 @@ export default function NewQuizPage() {
       {/* Top Nav Bar */}
       <header className="bg-surface-bright flex justify-between items-center w-full px-6 py-3 border-b border-primary/10 sticky top-0 z-50">
         <div className="flex items-center gap-6">
+          <button
+            onClick={() => router.push("/host/dashboard")}
+            className="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+          >
+            ← Dashboard
+          </button>
+          <div className="h-8 w-px bg-outline-variant/30" />
           <span className="text-xl font-bold text-primary-container tracking-tighter">
             QuizTime
           </span>
