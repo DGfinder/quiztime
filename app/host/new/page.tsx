@@ -173,7 +173,7 @@ export default function NewQuizPage() {
         time_limit: q.time_limit,
         points_base: 1000,
         order_index: idx,
-        image_url: q.type === "image_question" ? q.image_url || null : null,
+        image_url: q.image_url || null,
         is_joker: q.is_joker,
         slider_min: q.type === "slider" ? q.slider_min : null,
         slider_max: q.type === "slider" ? q.slider_max : null,
