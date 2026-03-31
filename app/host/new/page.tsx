@@ -175,6 +175,7 @@ export default function NewQuizPage() {
         order_index: idx,
         image_url: q.image_url || null,
         is_joker: q.is_joker,
+        is_image_blurred: q.is_image_blurred ?? false,
         slider_min: q.type === "slider" ? q.slider_min : null,
         slider_max: q.type === "slider" ? q.slider_max : null,
         video_url: q.type === "video_question" ? q.video_url || null : null,

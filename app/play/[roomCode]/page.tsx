@@ -115,9 +115,30 @@ export default function PlayPage() {
   // Image loading
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // Progressive blur
+  const [blurAmount, setBlurAmount] = useState(0);
+
   // Joining state
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Progressive blur: reduce blur as timer ticks down
+  useEffect(() => {
+    if (!currentQuestion?.is_image_blurred) {
+      setBlurAmount(0);
+      return;
+    }
+    if (phase === "answer_revealed") {
+      // Reveal — animate to 0 via CSS transition
+      setBlurAmount(0);
+      return;
+    }
+    if (phase === "question" || phase === "answered") {
+      const fraction = timeLimit > 0 ? timeRemaining / timeLimit : 1;
+      // Start at 16px, reduce to 6px by end of timer
+      setBlurAmount(Math.max(6, 16 * fraction));
+    }
+  }, [currentQuestion?.is_image_blurred, phase, timeRemaining, timeLimit]);
 
   // Channel ref to avoid re-subscribing
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -536,6 +557,10 @@ export default function PlayPage() {
                       sizes="(max-width: 768px) 100vw, 50vw"
                       loading="eager"
                       onLoad={() => setImageLoaded(true)}
+                      style={currentQuestion.is_image_blurred ? {
+                        filter: `blur(${blurAmount}px)`,
+                        transition: 'filter 0.8s ease-out',
+                      } : undefined}
                     />
                   </div>
                 )}
@@ -609,6 +634,10 @@ export default function PlayPage() {
                       sizes="(max-width: 768px) 100vw, 50vw"
                       loading="eager"
                       onLoad={() => setImageLoaded(true)}
+                      style={currentQuestion.is_image_blurred ? {
+                        filter: `blur(${blurAmount}px)`,
+                        transition: 'filter 0.8s ease-out',
+                      } : undefined}
                     />
                   </div>
                 )}

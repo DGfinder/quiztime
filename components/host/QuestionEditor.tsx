@@ -202,6 +202,48 @@ export default function QuestionEditor({
               Add image to question
             </button>
           )}
+
+          {/* Blur toggle — shown when image is set */}
+          {question.image_url && (
+            <div className="mt-4 flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl">
+              <div className="flex flex-col flex-1">
+                <span className="text-sm font-bold text-primary flex items-center gap-2">
+                  <span className="text-lg">👁️</span>
+                  Blur image during question (reveal on answer)
+                </span>
+                <span className="text-[10px] font-medium text-outline mt-0.5">
+                  Great for &quot;Who Am I?&quot; style rounds — image progressively unblurs
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  className="sr-only peer"
+                  type="checkbox"
+                  checked={question.is_image_blurred ?? false}
+                  onChange={(e) => update({ is_image_blurred: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-outline-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+              </label>
+            </div>
+          )}
+
+          {/* Blur preview */}
+          {question.image_url && question.is_image_blurred && (
+            <div className="mt-2 rounded-xl overflow-hidden relative aspect-video max-w-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={question.image_url}
+                alt="Blur preview"
+                className="w-full h-full object-cover"
+                style={{ filter: 'blur(12px)' }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="bg-black/50 text-white text-xs font-bold px-3 py-1.5 rounded-lg">
+                  Blur preview — players see this during question
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* MC / Image Answer Grid */}

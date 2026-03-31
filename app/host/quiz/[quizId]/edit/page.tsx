@@ -50,6 +50,7 @@ function bankItemToFormData(item: QuestionBankItem): QuestionFormData {
     time_limit: item.time_limit,
     image_url: item.image_url || "",
     is_joker: item.is_joker,
+    is_image_blurred: item.is_image_blurred ?? false,
     slider_min: item.slider_min ?? 0,
     slider_max: item.slider_max ?? 100,
     slider_tolerance: item.slider_tolerance ?? undefined,
@@ -141,6 +142,7 @@ export default function EditQuizPage() {
           points_base: 1000,
           image_url: q.type === "image_question" ? q.image_url || null : null,
           is_joker: q.is_joker,
+          is_image_blurred: q.is_image_blurred ?? false,
           slider_min: q.type === "slider" ? q.slider_min : null,
           slider_max: q.type === "slider" ? q.slider_max : null,
           slider_tolerance:
@@ -265,6 +267,7 @@ export default function EditQuizPage() {
         order_index: idx,
         image_url: q.image_url,
         is_joker: q.is_joker,
+        is_image_blurred: q.is_image_blurred ?? false,
         slider_min: q.slider_min,
         slider_max: q.slider_max,
         video_url: q.video_url,

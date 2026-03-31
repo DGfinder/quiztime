@@ -28,6 +28,7 @@ export interface QuestionBankItem {
   points_base: number;
   image_url: string | null;
   is_joker: boolean;
+  is_image_blurred?: boolean;
   slider_min: number | null;
   slider_max: number | null;
   slider_tolerance: number | null;
@@ -85,6 +86,7 @@ function questionFormToRow(hostId: string, q: QuestionFormData) {
     points_base: 1000,
     image_url: q.image_url || null,
     is_joker: q.is_joker,
+    is_image_blurred: q.is_image_blurred ?? false,
     slider_min: q.type === "slider" ? q.slider_min : null,
     slider_max: q.type === "slider" ? q.slider_max : null,
     slider_tolerance: q.type === "slider" ? (q.slider_tolerance ?? null) : null,
@@ -210,6 +212,7 @@ export async function duplicateQuizTemplate(
     points_base: q.points_base,
     image_url: q.image_url,
     is_joker: q.is_joker,
+    is_image_blurred: q.is_image_blurred ?? false,
     slider_min: q.slider_min,
     slider_max: q.slider_max,
     slider_tolerance: q.slider_tolerance,

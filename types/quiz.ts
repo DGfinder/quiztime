@@ -43,6 +43,7 @@ export interface Question {
   order_index: number;
   image_url: string | null;
   is_joker: boolean;
+  is_image_blurred?: boolean;
   slider_min?: number;
   slider_max?: number;
   slider_tolerance?: number;
@@ -127,6 +128,7 @@ export interface QuestionFormData {
   time_limit: number;
   image_url: string;
   is_joker: boolean;
+  is_image_blurred?: boolean;
   slider_min: number;
   slider_max: number;
   slider_tolerance?: number;

@@ -65,6 +65,7 @@ export default function HostControlPanel() {
   const [suspenseMode, setSuspenseMode] = useState(false);
   const [showSuspenseModal, setShowSuspenseModal] = useState(false);
   const [hostImageLoaded, setHostImageLoaded] = useState(false);
+  const [hostBlurAmount, setHostBlurAmount] = useState(0);
 
   // Refs to avoid stale closures
   const playersRef = useRef<Player[]>(players);
@@ -109,6 +110,23 @@ export default function HostControlPanel() {
     handleTimerTick,
     handleTimerComplete
   );
+
+  // Progressive blur for host screen
+  useEffect(() => {
+    if (!currentQuestion?.is_image_blurred) {
+      setHostBlurAmount(0);
+      return;
+    }
+    if (answerRevealed) {
+      setHostBlurAmount(0);
+      return;
+    }
+    if (gameState === "question_start" || gameState === "question_end") {
+      const tl = currentQuestion.time_limit ?? 15;
+      const fraction = tl > 0 ? timeRemaining / tl : 1;
+      setHostBlurAmount(Math.max(6, 16 * fraction));
+    }
+  }, [currentQuestion, gameState, timeRemaining, answerRevealed]);
 
   // ---------- DATA FETCHING ----------
 
@@ -244,6 +262,7 @@ export default function HostControlPanel() {
       order_index: question.order_index,
       image_url: question.image_url,
       is_joker: question.is_joker,
+      is_image_blurred: question.is_image_blurred ?? false,
       slider_min: question.slider_min,
       slider_max: question.slider_max,
       video_url: question.video_url,
@@ -751,6 +770,10 @@ export default function HostControlPanel() {
                         sizes="(max-width: 768px) 100vw, 50vw"
                         loading="eager"
                         onLoad={() => setHostImageLoaded(true)}
+                        style={currentQuestion.is_image_blurred ? {
+                          filter: `blur(${hostBlurAmount}px)`,
+                          transition: 'filter 0.8s ease-out',
+                        } : undefined}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent" />
                     </div>
