@@ -3,6 +3,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { supabase, generateRoomCode } from "@/lib/supabase";
 import { getHostId } from "@/lib/host";
 import {
@@ -12,16 +28,7 @@ import {
 } from "@/lib/quizStorage";
 import type { QuestionFormData, QuestionType } from "@/types/quiz";
 import QuestionEditor from "@/components/host/QuestionEditor";
-
-const questionTypeIcons: Record<QuestionType, string> = {
-  multiple_choice: "quiz",
-  true_false: "check_circle",
-  image_question: "image",
-  slider: "linear_scale",
-  type_in: "keyboard",
-  video_question: "videocam",
-  audio_question: "music_note",
-};
+import SortableQuestionCard from "@/components/host/SortableQuestionCard";
 
 function createEmptyQuestion(): QuestionFormData {
   return {
@@ -286,6 +293,31 @@ export default function EditQuizPage() {
     }
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const questionIds = questions.map((_, i) => String(i));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = questionIds.indexOf(String(active.id));
+      const newIndex = questionIds.indexOf(String(over!.id));
+      setQuestions((items) => arrayMove(items, oldIndex, newIndex));
+      if (selectedIndex === oldIndex) {
+        setSelectedIndex(newIndex);
+      } else if (oldIndex < selectedIndex && newIndex >= selectedIndex) {
+        setSelectedIndex((prev) => prev - 1);
+      } else if (oldIndex > selectedIndex && newIndex <= selectedIndex) {
+        setSelectedIndex((prev) => prev + 1);
+      }
+      triggerSave();
+    }
+  };
+
   const selected = questions[selectedIndex];
 
   if (loading) {
@@ -385,77 +417,29 @@ export default function EditQuizPage() {
               Questions ({questions.length})
             </span>
           </div>
-          <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-24">
-            {questions.map((q, idx) => {
-              const isSelected = idx === selectedIndex;
-              return (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{
-                    y: -2,
-                    boxShadow: "0 4px 12px rgba(27,43,94,0.08)",
-                  }}
-                  transition={{ delay: idx * 0.03 }}
-                  onClick={() => setSelectedIndex(idx)}
-                  className={`p-3 rounded-xl flex gap-3 group cursor-pointer transition-all ${
-                    isSelected
-                      ? "bg-surface-container-lowest shadow-sm border-l-4 border-primary"
-                      : q.is_joker
-                      ? "hover:bg-surface-container relative overflow-hidden"
-                      : "hover:bg-surface-container"
-                  }`}
-                >
-                  {q.is_joker && !isSelected && (
-                    <div className="absolute right-0 top-0 bg-tertiary-fixed-dim/20 w-12 h-12 -mr-6 -mt-6 rotate-45" />
-                  )}
-                  <div
-                    className={`text-[10px] font-bold mt-1 ${
-                      isSelected ? "text-primary/40" : "text-outline"
-                    }`}
-                  >
-                    {String(idx + 1).padStart(2, "0")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className={`text-sm line-clamp-1 ${
-                        isSelected
-                          ? "font-bold text-primary-container"
-                          : "font-semibold text-on-surface-variant"
-                      }`}
-                    >
-                      {q.question_text || "Untitled question..."}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      {q.is_joker ? (
-                        <>
-                          <span
-                            className="material-symbols-outlined text-[14px] text-tertiary-fixed-dim"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            star
-                          </span>
-                          <span className="text-[10px] font-bold bg-tertiary-fixed/30 px-2 py-0.5 rounded-full text-on-tertiary-fixed-variant tracking-tighter">
-                            JOKER
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-[14px] text-outline">
-                            {questionTypeIcons[q.type]}
-                          </span>
-                          <span className="text-[10px] font-bold bg-surface-container px-2 py-0.5 rounded-full text-on-surface-variant tracking-tighter">
-                            {q.time_limit}s
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={questionIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="flex-1 overflow-y-auto px-4 space-y-2 pb-24">
+                {questions.map((q, idx) => (
+                  <SortableQuestionCard
+                    key={idx}
+                    id={String(idx)}
+                    question={q}
+                    index={idx}
+                    isSelected={idx === selectedIndex}
+                    onClick={() => setSelectedIndex(idx)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           <div className="p-4 bg-surface-container-low border-t border-outline-variant/10">
             <motion.button
               onClick={addQuestion}
