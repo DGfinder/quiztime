@@ -161,4 +161,52 @@ types/
 supabase/
   migrations/
     001_initial.sql                 # Database schema
+    002_quiz_management.sql         # Quiz templates + question bank
+    003_blur_column.sql             # Image blur toggle
+
+__tests__/
+  scoring.test.ts                   # Unit tests for scoring logic
+  horses.test.ts                    # Unit tests for horse name generator
+  supabase.test.ts                  # Unit tests for room code generation
 ```
+
+## Development
+
+### Running tests
+
+```bash
+npm test           # run once
+npm run test:watch # watch mode
+```
+
+### Type checking
+
+```bash
+npx tsc --noEmit
+```
+
+### Linting
+
+```bash
+npm run lint
+```
+
+## CI
+
+GitHub Actions runs on every push/PR to `main`:
+1. Typecheck + lint + tests
+2. Production build
+
+Configure these repository secrets for CI builds:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ANTHROPIC_API_KEY` (optional)
+
+## Production Notes
+
+- **No auth required** — host identity is a UUID stored in `localStorage`. Keep this in mind for shared/public deployments.
+- **RLS policies** are permissive (anon access) — suitable for internal/trusted team use.
+- **AI question generation** is optional; set `ANTHROPIC_API_KEY` to enable it.
+- **Realtime** uses Supabase broadcast channels — each room gets its own channel `room:{code}`.
+- **Scoring** is server-authoritative: the host scores all answers after each question.
