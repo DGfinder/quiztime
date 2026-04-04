@@ -920,6 +920,7 @@ export default function HostControlPanel() {
                   questionType={currentQuestion.type}
                   totalPlayers={players.length}
                   revealed={answerRevealed}
+                  playerNames={players.map(p => p.name)}
                 />
 
                 {/* Action buttons */}
@@ -1103,6 +1104,12 @@ export default function HostControlPanel() {
             )}
 
             <div className="flex justify-center gap-4 mt-6 flex-wrap">
+              <button
+                className="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest transition-colors"
+                onClick={() => setGameState("question_end")}
+              >
+                ← Back to Question
+              </button>
               {!isInSuspensePhase(
                 currentQuestionIndex + 1,
                 questions.length

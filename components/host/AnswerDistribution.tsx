@@ -14,6 +14,7 @@ interface AnswerDistributionProps {
   questionType: QuestionType;
   totalPlayers: number;
   revealed?: boolean;
+  playerNames?: string[];
 }
 
 const optionLabels = ["A", "B", "C", "D", "E", "F"];
@@ -103,16 +104,20 @@ export default function AnswerDistribution({
       {/* Player avatars */}
       <div className="mt-8 pt-8 border-t border-primary/5">
         <div className="flex -space-x-2">
-          {["JD", "AM", "RK"].map((initials, idx) => {
+          {(playerNames ?? []).slice(0, 5).map((name, idx) => {
             const colors = [
               "bg-primary-fixed",
               "bg-secondary-fixed",
               "bg-tertiary-fixed",
+              "bg-amber-200",
+              "bg-periwinkle/30",
             ];
+            const initials = name.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
             return (
               <div
-                key={initials}
-                className={`w-8 h-8 rounded-full border-2 border-surface ${colors[idx]} flex items-center justify-center text-[10px] font-bold`}
+                key={name}
+                title={name}
+                className={`w-8 h-8 rounded-full border-2 border-surface ${colors[idx % colors.length]} flex items-center justify-center text-[10px] font-bold`}
               >
                 {initials}
               </div>
