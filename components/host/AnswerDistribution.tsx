@@ -24,6 +24,7 @@ export default function AnswerDistribution({
   correctAnswer,
   totalPlayers,
   revealed,
+  playerNames,
 }: AnswerDistributionProps) {
   const totalAnswers = answers.reduce((sum, a) => sum + a.count, 0);
   const maxCount = Math.max(...answers.map((a) => a.count), 1);
