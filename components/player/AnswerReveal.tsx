@@ -12,6 +12,8 @@ interface AnswerRevealProps {
   totalScore: number;
   playerRank: number | null;
   isJoker: boolean;
+  questionNumber: number;
+  totalQuestions: number;
 }
 
 export default function AnswerReveal({
@@ -22,6 +24,8 @@ export default function AnswerReveal({
   totalScore,
   playerRank,
   isJoker,
+  questionNumber,
+  totalQuestions,
 }: AnswerRevealProps) {
   const [displayPoints, setDisplayPoints] = useState(0);
   const [showNextMessage, setShowNextMessage] = useState(false);
@@ -203,7 +207,11 @@ export default function AnswerReveal({
         className="mt-2 text-sm text-ink/50 font-medium"
       >
         Total: {totalScore.toLocaleString()} pts
-        {playerRank != null && ` · Rank #${playerRank}`}
+        {questionNumber > totalQuestions / 2 ? (
+          <span className="italic text-ink/30"> · 🔒 Rankings hidden</span>
+        ) : (
+          playerRank != null && ` · Rank #${playerRank}`
+        )}
       </motion.div>
 
       {/* Next question message */}

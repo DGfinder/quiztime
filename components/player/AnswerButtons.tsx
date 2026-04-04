@@ -122,7 +122,7 @@ export default function AnswerButtons({
             );
           })}
         </div>
-        {isLockedIn && !isRevealed && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel lockedAnswer={lockedAnswer!} />}
       </div>
     );
   }
@@ -190,7 +190,7 @@ export default function AnswerButtons({
             );
           })}
         </div>
-        {isLockedIn && !isRevealed && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel lockedAnswer={lockedAnswer!} />}
       </div>
     );
   }
@@ -249,7 +249,7 @@ export default function AnswerButtons({
             </motion.button>
           )}
         </div>
-        {isLockedIn && !isRevealed && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel lockedAnswer={lockedAnswer!} />}
       </div>
     );
   }
@@ -289,7 +289,7 @@ export default function AnswerButtons({
             </motion.button>
           )}
         </div>
-        {isLockedIn && !isRevealed && <LockedInLabel />}
+        {isLockedIn && !isRevealed && <LockedInLabel lockedAnswer={lockedAnswer!} />}
       </div>
     );
   }
@@ -297,21 +297,50 @@ export default function AnswerButtons({
   return null;
 }
 
-function LockedInLabel() {
+function LockedInLabel({ lockedAnswer }: { lockedAnswer: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="text-center py-3"
+      className="flex flex-col items-center gap-4 py-5"
     >
-      <p className="text-navy/70 font-semibold text-sm">
-        Answer locked in. Waiting for reveal
-        <motion.span
-          animate={{ opacity: [1, 0.3, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-        >
-          ...
-        </motion.span>
+      {/* Selected answer card with shimmer glow */}
+      <motion.div
+        animate={{
+          boxShadow: [
+            "0 0 0px rgba(245,158,11,0.0)",
+            "0 0 20px rgba(245,158,11,0.3)",
+            "0 0 0px rgba(245,158,11,0.0)",
+          ],
+        }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+        className="w-full rounded-2xl border-2 border-amber/40 bg-white px-6 py-4 text-center"
+      >
+        <p className="text-xs font-semibold text-amber-600/60 mb-1 uppercase tracking-wider">
+          Your answer
+        </p>
+        <p className="text-lg font-bold text-navy">{lockedAnswer}</p>
+      </motion.div>
+
+      {/* Pulsing dots */}
+      <div className="flex items-center gap-2">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            animate={{ scale: [1, 1.5, 1] }}
+            transition={{
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.25,
+            }}
+            className="w-2.5 h-2.5 rounded-full bg-navy/30"
+          />
+        ))}
+      </div>
+
+      <p className="text-sm text-ink/40 font-medium">
+        Waiting for the reveal...
       </p>
     </motion.div>
   );

@@ -119,6 +119,9 @@ export default function PlayPage() {
   // Progressive blur
   const [blurAmount, setBlurAmount] = useState(0);
 
+  // Image-first reveal phase for blurred image questions
+  const [revealPhase, setRevealPhase] = useState<'image_first' | 'points_shown' | null>(null);
+
   // Joining state
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -222,6 +225,7 @@ export default function PlayPage() {
             setRevealPoints(0);
             setRevealCorrectAnswer("");
             setRevealIsJoker(false);
+            setRevealPhase(null);
           }
 
           if (p.state === "question_end") {
@@ -276,6 +280,17 @@ export default function PlayPage() {
           }
           setRevealCorrectAnswer(p.correctAnswer);
           setPhase("answer_revealed");
+
+          // For blurred image questions, use phased reveal
+          setCurrentQuestion((prev) => {
+            if (prev?.is_image_blurred) {
+              setRevealPhase('image_first');
+              setTimeout(() => setRevealPhase('points_shown'), 2500);
+            } else {
+              setRevealPhase(null);
+            }
+            return prev;
+          });
         })
         .on("broadcast", { event: "leaderboard_update" }, ({ payload }) => {
           const p = payload as LeaderboardUpdatePayload;
@@ -624,51 +639,116 @@ export default function PlayPage() {
                 <TimerBar timeRemaining={timeRemaining} timeLimit={timeLimit} />
               )}
 
-              {/* Question text */}
-              <div className="bg-white rounded-3xl shadow-md p-6">
-                {currentQuestion.image_url && (
-                  <div className="mb-4 rounded-2xl overflow-hidden relative aspect-video">
-                    {!imageLoaded && (
-                      <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse" />
-                    )}
-                    <Image
-                      src={currentQuestion.image_url}
-                      alt="Question image"
-                      fill
-                      className="object-cover rounded-xl"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      loading="eager"
-                      onLoad={() => setImageLoaded(true)}
-                      style={currentQuestion.is_image_blurred ? {
-                        filter: `blur(${blurAmount}px)`,
-                        transition: 'filter 0.8s ease-out',
-                      } : undefined}
-                    />
-                  </div>
-                )}
-                <h2 className="text-xl font-bold text-navy leading-snug">
+              {/* Question text (smaller) */}
+              <div className="bg-white/60 rounded-2xl shadow-sm px-5 py-3">
+                <h2 className="text-base font-semibold text-navy/70 leading-snug">
                   {currentQuestion.question_text}
                 </h2>
               </div>
 
-              {/* Locked-in answer buttons */}
-              <div className="mt-auto pb-2">
-                <AnswerButtons
-                  question={currentQuestion}
-                  onAnswer={() => {}}
-                  disabled={true}
-                  lockedAnswer={selectedAnswer}
-                />
+              {/* Selected answer card with pulsing ring */}
+              <div className="flex-1 flex flex-col items-center justify-center gap-6">
+                <motion.div
+                  animate={{
+                    boxShadow: [
+                      "0 0 0px 0px rgba(245,158,11,0.0)",
+                      "0 0 0px 6px rgba(245,158,11,0.25)",
+                      "0 0 0px 0px rgba(245,158,11,0.0)",
+                    ],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="w-full max-w-xs rounded-2xl border-2 border-amber/40 bg-white px-6 py-5 text-center shadow-md"
+                >
+                  <p className="text-xs font-semibold text-amber-600/60 mb-1 uppercase tracking-wider">
+                    Your answer
+                  </p>
+                  <p className="text-xl font-bold text-navy">{selectedAnswer}</p>
+                </motion.div>
+
+                <p className="text-sm text-ink/40 font-medium">
+                  Everyone watching the big screen 👀
+                </p>
+
+                {/* Animated countdown dots */}
+                <div className="flex items-center gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ scale: [1, 1.5, 1] }}
+                      transition={{
+                        duration: 1.2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: i * 0.25,
+                      }}
+                      className="w-2.5 h-2.5 rounded-full bg-navy/30"
+                    />
+                  ))}
+                </div>
               </div>
             </AnimatedContainer>
           )}
 
           {/* ── Answer Revealed ───────────────────── */}
-          {phase === "answer_revealed" && (
+          {phase === "answer_revealed" && revealPhase === 'image_first' && currentQuestion?.image_url && (
             <AnimatedContainer
-              key="answer-revealed"
-              className="flex-1 flex items-center justify-center"
+              key="answer-revealed-image"
+              className="flex-1 flex flex-col items-center justify-center gap-6 px-2"
             >
+              {/* Dramatic unblur image */}
+              <motion.div
+                initial={{ opacity: 0.6 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl relative aspect-video"
+              >
+                <Image
+                  src={currentQuestion.image_url}
+                  alt="Revealed"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  style={{
+                    filter: 'blur(0px)',
+                    transition: 'filter 0.8s ease-out',
+                  }}
+                />
+              </motion.div>
+
+              {/* "IT IS..." answer reveal text */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
+                className="text-center"
+              >
+                <p className="text-sm font-bold text-ink/40 uppercase tracking-widest mb-1">
+                  It is...
+                </p>
+                <p className="text-3xl font-extrabold text-coral">
+                  {revealCorrectAnswer}
+                </p>
+              </motion.div>
+            </AnimatedContainer>
+          )}
+
+          {phase === "answer_revealed" && (revealPhase === 'points_shown' || revealPhase === null) && (
+            <AnimatedContainer
+              key="answer-revealed-points"
+              className="flex-1 flex flex-col items-center justify-center gap-4"
+            >
+              {/* Show unblurred image (smaller) if this was a blurred image question */}
+              {currentQuestion?.is_image_blurred && currentQuestion.image_url && (
+                <div className="w-full max-w-xs rounded-xl overflow-hidden shadow-md relative aspect-video mb-2">
+                  <Image
+                    src={currentQuestion.image_url}
+                    alt="Revealed"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </div>
+              )}
               <AnswerReveal
                 isCorrect={revealIsCorrect}
                 pointsEarned={revealPoints}
@@ -677,6 +757,8 @@ export default function PlayPage() {
                 totalScore={totalScore}
                 playerRank={playerRank}
                 isJoker={revealIsJoker}
+                questionNumber={questionNumber}
+                totalQuestions={totalQuestions}
               />
             </AnimatedContainer>
           )}
@@ -696,9 +778,15 @@ export default function PlayPage() {
                 <div className="text-4xl mb-2">🏇</div>
                 {playerRank !== null ? (
                   <>
-                    <h2 className="text-2xl font-extrabold text-navy">
-                      You&apos;re in {ordinalSuffix(playerRank)} place!
-                    </h2>
+                    {questionNumber > totalQuestions / 2 ? (
+                      <h2 className="text-2xl font-extrabold text-navy">
+                        🔒 Rankings hidden
+                      </h2>
+                    ) : (
+                      <h2 className="text-2xl font-extrabold text-navy">
+                        You&apos;re in {ordinalSuffix(playerRank)} place!
+                      </h2>
+                    )}
                     <p className="text-3xl font-bold text-coral mt-2">
                       {totalScore.toLocaleString()} pts
                     </p>
