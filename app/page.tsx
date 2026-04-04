@@ -70,14 +70,12 @@ export default function HomePage() {
               </button>
             </div>
 
-            {isReturningHost && (
-              <button
+            <button
                 onClick={() => router.push("/host/dashboard")}
                 className="mt-6 text-sm font-bold text-white/50 hover:text-white transition-colors flex items-center justify-center gap-1"
               >
-                Back to your dashboard →
+                Host Dashboard →
               </button>
-            )}
           </motion.div>
         </AnimatedContainer>
 
@@ -230,8 +228,7 @@ export default function HomePage() {
               >
                 Host a Quiz Night
               </Button>
-              {isReturningHost && (
-                <button
+              <button
                   onClick={() => router.push("/host/dashboard")}
                   className="w-full mt-3 text-sm font-bold text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1"
                 >
@@ -240,7 +237,6 @@ export default function HomePage() {
                     arrow_forward
                   </span>
                 </button>
-              )}
             </div>
           </AnimatedContainer>
 
