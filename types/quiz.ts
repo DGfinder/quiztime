@@ -102,6 +102,7 @@ export interface LeaderboardEntry {
   horse_name: string;
   score: number;
   rank: number;
+  avg_time_ms?: number;
 }
 
 export interface LeaderboardUpdatePayload {

@@ -412,7 +412,7 @@ export default function HostControlPanel() {
 
   // ---------- LEADERBOARD ----------
 
-  const buildLeaderboard = useCallback((): LeaderboardEntry[] => {
+  const buildLeaderboard = useCallback((avgTimeMap?: Record<string, number>): LeaderboardEntry[] => {
     const sorted = [...players].sort((a, b) => b.score - a.score);
     return sorted.map((p, idx) => ({
       player_id: p.id,
@@ -420,6 +420,7 @@ export default function HostControlPanel() {
       horse_name: p.horse_name,
       score: p.score,
       rank: idx + 1,
+      avg_time_ms: avgTimeMap?.[p.id],
     }));
   }, [players]);
 
@@ -478,7 +479,33 @@ export default function HostControlPanel() {
   const finishGame = async () => {
     setGameState("finished");
 
-    const entries = buildLeaderboard();
+    // Compute per-player average time (correct answers only)
+    const avgTimeMap: Record<string, number> = {};
+    if (room) {
+      const questionIds = questionsRef.current.map((q) => q.id);
+      if (questionIds.length > 0) {
+        const { data: allAnswers } = await supabase
+          .from("qt_answers")
+          .select("player_id, time_taken_ms, is_correct")
+          .in("question_id", questionIds)
+          .eq("is_correct", true);
+
+        if (allAnswers && allAnswers.length > 0) {
+          const grouped: Record<string, number[]> = {};
+          for (const a of allAnswers) {
+            if (!grouped[a.player_id]) grouped[a.player_id] = [];
+            grouped[a.player_id].push(a.time_taken_ms);
+          }
+          for (const [pid, times] of Object.entries(grouped)) {
+            avgTimeMap[pid] = Math.round(
+              times.reduce((s, t) => s + t, 0) / times.length
+            );
+          }
+        }
+      }
+    }
+
+    const entries = buildLeaderboard(avgTimeMap);
     setLeaderboard(entries);
     if (entries.length > 0) {
       toast.success(`Game over! 🏆 ${entries[0].player_name} wins with ${entries[0].score.toLocaleString()} pts`);
@@ -578,6 +605,11 @@ export default function HostControlPanel() {
       ? `${window.location.origin}/play/${roomCode}`
       : "";
 
+  const displayUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/host/${roomCode}/display`
+      : "";
+
   const isLastQuestion = currentQuestionIndex >= questions.length - 1;
 
   // Timer circle calculations
@@ -632,6 +664,7 @@ export default function HostControlPanel() {
         questionCount={questions.length}
         onStart={startGame}
         canStart={players.length > 0}
+        displayUrl={displayUrl}
       />
     );
   }
@@ -714,6 +747,16 @@ export default function HostControlPanel() {
           )}
 
         <div className="flex items-center gap-4">
+          <a
+            href={displayUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-primary border border-primary/10 hover:bg-surface-container-low transition-colors"
+            title="Open this on the projector/TV"
+          >
+            <span className="material-symbols-outlined text-sm">tv</span>
+            Display
+          </a>
           {gameState === "question_start" && (
             <button
               onClick={() => {

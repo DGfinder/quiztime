@@ -43,43 +43,80 @@ function AnimatedScore({ target, duration = 800 }: { target: number; duration?: 
   return <>{value.toLocaleString()}</>;
 }
 
+function useLoopingConfetti() {
+  const [bursts, setBursts] = useState<
+    { id: number; originX: number; direction: "left" | "right" }[]
+  >([]);
+
+  useEffect(() => {
+    let burstCount = 0;
+    const interval = setInterval(() => {
+      burstCount++;
+      const direction = burstCount % 2 === 0 ? "left" : "right";
+      const originX = direction === "left" ? 15 + Math.random() * 20 : 65 + Math.random() * 20;
+      setBursts((prev) => [...prev, { id: burstCount, originX, direction }]);
+      if (burstCount >= 12) clearInterval(interval);
+    }, 2500);
+
+    // Fire first burst immediately
+    burstCount++;
+    setBursts([{ id: burstCount, originX: 40 + Math.random() * 20, direction: "right" }]);
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+      setBursts([]);
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  return bursts;
+}
+
 function Confetti() {
   const colors = ["#FF6B6B", "#FFB95F", "#8594CD", "#1B2B5E"];
-  const particles = Array.from({ length: 30 }, (_, i) => ({
-    id: i,
-    left: Math.random() * 100,
-    delay: Math.random() * 2,
-    duration: 2 + Math.random() * 2,
-    rotation: Math.random() * 720 - 360,
-    size: 6 + Math.random() * 8,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    shape: Math.random() > 0.5 ? "50%" : "2px",
-  }));
+  const bursts = useLoopingConfetti();
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute animate-[endgame-confetti_ease-out_forwards]"
-          style={{
-            left: `${p.left}%`,
-            top: "-20px",
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
-            ["--confetti-rot" as string]: `${p.rotation}deg`,
-          }}
-        >
+      {bursts.map((burst) => {
+        const particles = Array.from({ length: 30 }, (_, i) => ({
+          id: i,
+          left: burst.originX + (Math.random() * 30 - 15),
+          delay: Math.random() * 0.8,
+          duration: 2 + Math.random() * 2,
+          rotation: Math.random() * 720 - 360,
+          size: 6 + Math.random() * 8,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          shape: Math.random() > 0.5 ? "50%" : "2px",
+        }));
+
+        return particles.map((p) => (
           <div
+            key={`${burst.id}-${p.id}`}
+            className="absolute animate-[endgame-confetti_ease-out_forwards]"
             style={{
-              width: p.size,
-              height: p.size * 1.2,
-              backgroundColor: p.color,
-              borderRadius: p.shape,
+              left: `${p.left}%`,
+              top: "-20px",
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+              ["--confetti-rot" as string]: `${p.rotation}deg`,
             }}
-          />
-        </div>
-      ))}
+          >
+            <div
+              style={{
+                width: p.size,
+                height: p.size * 1.2,
+                backgroundColor: p.color,
+                borderRadius: p.shape,
+              }}
+            />
+          </div>
+        ));
+      })}
     </div>
   );
 }
@@ -254,6 +291,13 @@ export default function EndGame({
               <span className="text-xs text-[#1B2B5E]/40 font-medium">
                 {entry.rank <= totalQuestions ? `${totalQuestions - entry.rank + 1}` : "0"}/{totalQuestions}
               </span>
+
+              {/* Avg Speed */}
+              {entry.avg_time_ms != null && (
+                <span className="text-xs text-[#8594CD] font-medium w-14 text-right">
+                  {(entry.avg_time_ms / 1000).toFixed(1)}s
+                </span>
+              )}
 
               {/* Score */}
               <span className="font-bold font-mono text-[#FF6B6B] text-sm w-20 text-right">

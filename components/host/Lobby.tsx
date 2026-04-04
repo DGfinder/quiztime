@@ -18,6 +18,7 @@ interface LobbyProps {
   questionCount: number;
   onStart: () => void;
   canStart: boolean;
+  displayUrl?: string;
 }
 
 const emojiAvatars = [
@@ -33,6 +34,7 @@ export default function Lobby({
   questionCount,
   onStart,
   canStart,
+  displayUrl,
 }: LobbyProps) {
   const reduced = useReducedMotion();
   const [countPulse, setCountPulse] = useState(false);
@@ -77,6 +79,17 @@ export default function Lobby({
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {displayUrl && (
+            <a
+              href={displayUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-bold hover:opacity-90 transition-opacity"
+            >
+              <span className="material-symbols-outlined text-sm">tv</span>
+              Open Display Screen
+            </a>
+          )}
           <motion.div
             animate={
               !reduced && countPulse
