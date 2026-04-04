@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { saveSessionResult, type QuestionStat } from "@/lib/quizStorage";
 import {
@@ -204,6 +205,9 @@ export default function HostControlPanel() {
     const newPlayer = payload as unknown as Player;
     setPlayers((prev) => {
       if (prev.some((p) => p.id === newPlayer.id)) return prev;
+      toast(`🐎 ${newPlayer.name} joined as "${newPlayer.horse_name}"`, {
+        duration: 3000,
+      });
       return [...prev, newPlayer];
     });
   }, []);
@@ -234,6 +238,7 @@ export default function HostControlPanel() {
       .eq("id", room.id);
 
     setRoom((prev) => (prev ? { ...prev, status: "active" } : prev));
+    toast.success(`Game started! ${players.length} player${players.length !== 1 ? "s" : ""} in the room.`);
     startQuestion(0);
   };
 
@@ -475,6 +480,11 @@ export default function HostControlPanel() {
 
     const entries = buildLeaderboard();
     setLeaderboard(entries);
+    if (entries.length > 0) {
+      toast.success(`Game over! 🏆 ${entries[0].player_name} wins with ${entries[0].score.toLocaleString()} pts`);
+    } else {
+      toast.success("Game over! Results saved.");
+    }
 
     broadcast("leaderboard_update", { leaderboard: entries });
     broadcast("game_state_change", { state: "finished" });

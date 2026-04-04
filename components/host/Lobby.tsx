@@ -90,7 +90,7 @@ export default function Lobby({
               group
             </span>
             <span className="text-sm font-bold text-primary">
-              {players.length} player{players.length !== 1 ? "s" : ""} joined
+              {players.length} player{players.length !== 1 ? "s" : ""} in the room
             </span>
           </motion.div>
         </div>
@@ -105,7 +105,7 @@ export default function Lobby({
             </span>
             <h2 className="text-5xl font-extrabold text-primary tracking-tighter leading-tight">
               Waiting for your <br />
-              squad to arrive...
+              squad to saddle up...
             </h2>
           </div>
 
@@ -206,7 +206,7 @@ export default function Lobby({
               >
                 play_arrow
               </span>
-              {canStart ? "Start Quiz" : "Waiting for players..."}
+              {canStart ? "Start the Quiz Night 🎤" : "Waiting for players to join..."}
             </button>
             <div className="flex items-center justify-center gap-2 text-outline">
               <span className="material-symbols-outlined text-sm">info</span>

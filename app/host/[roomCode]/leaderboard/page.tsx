@@ -9,6 +9,7 @@ import Button from "@/components/shared/Button";
 import HorseRace from "@/components/leaderboard/HorseRace";
 import RankedList from "@/components/leaderboard/RankedList";
 import FinalReveal from "@/components/leaderboard/FinalReveal";
+import { LeaderboardSkeleton } from "@/components/shared/Skeleton";
 import { scramblePositions } from "@/lib/suspense";
 
 type ViewMode = "race" | "ranked";
@@ -205,12 +206,14 @@ export default function LeaderboardPage() {
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#021549] flex items-center justify-center">
-        <motion.div
-          className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-        />
+      <div className="min-h-screen bg-[#021549] flex flex-col">
+        <div className="bg-[#021549] px-6 py-4 flex items-center justify-between border-b border-white/10">
+          <div className="h-6 w-32 bg-white/10 rounded animate-pulse" />
+          <div className="h-8 w-24 bg-white/10 rounded-xl animate-pulse" />
+        </div>
+        <div className="flex-1 p-6">
+          <LeaderboardSkeleton rows={6} />
+        </div>
       </div>
     );
   }

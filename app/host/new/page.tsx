@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   DndContext,
   closestCenter,
@@ -82,12 +83,12 @@ export default function NewQuizPage() {
   };
 
   const validate = (): string | null => {
-    if (!title.trim()) return "Please enter a quiz title.";
+    if (!title.trim()) return "Give your quiz a title first.";
     const hasValidQuestion = questions.some(
       (q) => q.question_text.trim().length > 0
     );
     if (!hasValidQuestion)
-      return "At least one question must have question text.";
+      return "Add at least one question with some text — your audience needs something to answer!";
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.question_text.trim()) continue;
@@ -204,27 +205,28 @@ export default function NewQuizPage() {
       }
 
       setSaveSuccess(true);
+      toast.success(`Quiz "${title}" created! Heading to lobby…`);
       setTimeout(() => {
         router.push(`/host/${roomCode}?templateId=${templateId}`);
       }, 500);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred."
-      );
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setError(msg);
+      toast.error(msg);
       setIsCreating(false);
     }
   };
 
   const handleSaveDraft = async () => {
     if (!title.trim()) {
-      setError("Please enter a quiz title.");
+      setError("Give your quiz a title first.");
       return;
     }
     const validQuestions = questions.filter(
       (q) => q.question_text.trim().length > 0
     );
     if (validQuestions.length === 0) {
-      setError("Add at least one question with text.");
+      setError("Add at least one question before saving.");
       return;
     }
     // Validate correct answers
@@ -240,13 +242,14 @@ export default function NewQuizPage() {
       const hostId = getHostId();
       await saveQuizTemplate(hostId, title, validQuestions);
       setSaveSuccess(true);
+      toast.success("Draft saved!");
       setTimeout(() => {
         router.push("/host/dashboard");
       }, 500);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save draft."
-      );
+      const msg = err instanceof Error ? err.message : "Failed to save draft.";
+      setError(msg);
+      toast.error(msg);
       setIsSavingDraft(false);
     }
   };
@@ -338,9 +341,9 @@ export default function NewQuizPage() {
                 Saved!
               </motion.span>
             ) : isCreating ? (
-              "Creating..."
+              "Setting up the room..."
             ) : (
-              "Start Quiz"
+              "Launch Quiz Night 🎤"
             )}
           </motion.button>
         </div>

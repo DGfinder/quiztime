@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   DndContext,
   closestCenter,
@@ -286,9 +287,12 @@ export default function EditQuizPage() {
       await supabase.from("qt_questions").insert(questionRows);
       await markTemplateAsRun(quizId);
 
+      toast.success("Quiz ready! Heading to lobby…");
       router.push(`/host/${roomCode}?templateId=${quizId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to run quiz.");
+      const msg = err instanceof Error ? err.message : "Failed to run quiz.";
+      setError(msg);
+      toast.error(msg);
       setRunLoading(false);
     }
   };

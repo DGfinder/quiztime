@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LeaderboardEntry } from "@/types/quiz";
 
@@ -35,6 +35,25 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
     () => [...entries].sort((a, b) => a.rank - b.rank),
     [entries]
   );
+
+  // Track previous ranks to show movement indicators
+  const prevRanksRef = useRef<Record<string, number>>({});
+  const rankDeltas = useMemo(() => {
+    const deltas: Record<string, number> = {};
+    for (const entry of sorted) {
+      const prev = prevRanksRef.current[entry.player_id];
+      if (prev !== undefined && prev !== entry.rank) {
+        deltas[entry.player_id] = prev - entry.rank; // positive = moved up
+      }
+    }
+    return deltas;
+  }, [sorted]);
+
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    for (const entry of sorted) next[entry.player_id] = entry.rank;
+    prevRanksRef.current = next;
+  }, [sorted]);
 
   return (
     <div className="w-full overflow-hidden rounded-2xl bg-cream border border-navy/10 shadow-lg">
@@ -71,6 +90,8 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
             const isWinner = entry.rank === 1;
             const medal = medals[entry.rank];
 
+            const delta = rankDeltas[entry.player_id] ?? 0;
+
             return (
               <motion.div
                 key={entry.player_id}
@@ -80,6 +101,7 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
                 animate="visible"
                 exit="exit"
                 layout
+                layoutId={`player-row-${entry.player_id}`}
                 className={`grid grid-cols-[3rem_1fr_1fr_5rem] gap-2 px-6 py-4 items-center transition-colors ${
                   isWinner && isFinal
                     ? "bg-coral/10"
@@ -88,7 +110,7 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
                     : "bg-transparent"
                 } hover:bg-navy/5`}
               >
-                {/* Rank */}
+                {/* Rank + movement indicator */}
                 <div className="flex items-center gap-1">
                   {medal ? (
                     <span className="text-xl leading-none">{medal}</span>
@@ -96,6 +118,19 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
                     <span className="text-navy/40 font-bold text-base pl-1">
                       {entry.rank}
                     </span>
+                  )}
+                  {delta !== 0 && (
+                    <motion.span
+                      key={`delta-${entry.player_id}-${entry.rank}`}
+                      initial={{ opacity: 0, y: delta > 0 ? 6 : -6 }}
+                      animate={{ opacity: [0, 1, 1, 0], y: 0 }}
+                      transition={{ duration: 1.8, times: [0, 0.1, 0.7, 1] }}
+                      className={`text-[10px] font-extrabold leading-none ${
+                        delta > 0 ? "text-emerald-500" : "text-red-400"
+                      }`}
+                    >
+                      {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                    </motion.span>
                   )}
                 </div>
 

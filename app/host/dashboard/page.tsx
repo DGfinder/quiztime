@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { supabase, generateRoomCode } from "@/lib/supabase";
 import { getHostId } from "@/lib/host";
 import {
@@ -15,6 +16,7 @@ import {
   type QuizTemplate,
   type SessionResult,
 } from "@/lib/quizStorage";
+import { QuizCardSkeleton, StatCardSkeleton } from "@/components/shared/Skeleton";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -57,7 +59,7 @@ export default function DashboardPage() {
       try {
         const { questions } = await loadQuizTemplate(template.id);
         if (questions.length === 0) {
-          alert("This quiz has no questions. Edit it first.");
+          toast.warning("This quiz has no questions — edit it first.");
           setActionLoading(null);
           return;
         }
@@ -109,9 +111,10 @@ export default function DashboardPage() {
         }
 
         await markTemplateAsRun(template.id);
+        toast.success(`"${template.title}" — room created! Heading to lobby…`);
         router.push(`/host/${roomCode}?templateId=${template.id}`);
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to run quiz.");
+        toast.error(err instanceof Error ? err.message : "Failed to run quiz.");
         setActionLoading(null);
       }
     },
@@ -125,8 +128,9 @@ export default function DashboardPage() {
       try {
         await deleteQuizTemplate(id);
         setTemplates((prev) => prev.filter((t) => t.id !== id));
+        toast.success("Quiz deleted.");
       } catch {
-        alert("Failed to delete quiz.");
+        toast.error("Failed to delete quiz.");
       } finally {
         setActionLoading(null);
       }
@@ -144,7 +148,7 @@ export default function DashboardPage() {
         // Navigate to edit the duplicate
         router.push(`/host/quiz/${newId}/edit`);
       } catch {
-        alert("Failed to duplicate quiz.");
+        toast.error("Failed to duplicate quiz.");
       } finally {
         setActionLoading(null);
       }
@@ -174,21 +178,13 @@ export default function DashboardPage() {
         </header>
         <main className="max-w-7xl mx-auto px-8 py-8">
           <div className="grid grid-cols-3 gap-4 mb-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10">
-                <div className="h-4 w-24 bg-surface-container-high rounded animate-pulse mb-3" />
-                <div className="h-8 w-16 bg-surface-container-high rounded animate-pulse" />
-              </div>
+            {[0, 1, 2].map((i) => (
+              <StatCardSkeleton key={i} />
             ))}
           </div>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-5 flex items-center gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 w-48 bg-surface-container-high rounded animate-pulse" />
-                  <div className="h-3 w-32 bg-surface-container-high rounded animate-pulse" />
-                </div>
-              </div>
+            {[0, 1, 2, 3].map((i) => (
+              <QuizCardSkeleton key={i} />
             ))}
           </div>
         </main>
@@ -216,7 +212,7 @@ export default function DashboardPage() {
           whileTap={{ scale: 0.95 }}
           className="bg-secondary-container text-white px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0px_10px_20px_rgba(255,107,107,0.2)]"
         >
-          New Quiz
+          🎤 Host a Quiz Night
         </motion.button>
       </header>
 
@@ -262,11 +258,10 @@ export default function DashboardPage() {
                   lightbulb
                 </span>
                 <h3 className="text-xl font-bold text-primary mb-2">
-                  Create your first quiz
+                  Host your first quiz night
                 </h3>
                 <p className="text-outline mb-6 max-w-sm mx-auto">
-                  Build a quiz with multiple question types, then run it live
-                  with your team.
+                  Build a quiz with multiple question types, then run it live with your team. It takes about 5 minutes.
                 </p>
                 <motion.button
                   onClick={() => router.push("/host/new")}
@@ -274,7 +269,7 @@ export default function DashboardPage() {
                   whileTap={{ scale: 0.95 }}
                   className="bg-secondary-container text-white px-8 py-3 rounded-xl font-extrabold shadow-[0px_10px_20px_rgba(255,107,107,0.2)]"
                 >
-                  New Quiz
+                  🎤 Host a Quiz Night
                 </motion.button>
               </motion.div>
             ) : (

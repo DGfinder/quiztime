@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { generateHorseName } from "@/lib/horses";
 import type {
@@ -158,13 +159,13 @@ export default function PlayPage() {
       if (cancelled) return;
 
       if (error || !data) {
-        setRoomError("Room not found. Check your code and try again.");
+        setRoomError("Room not found. Double-check the code and try again.");
         setPhase("join");
         return;
       }
 
       if (data.status === "finished") {
-        setRoomError("This quiz has already finished.");
+        setRoomError("This quiz has already finished. Ask the host to start a new game!");
         setPhase("join");
         return;
       }
@@ -235,6 +236,7 @@ export default function PlayPage() {
           if (p.state === "finished") {
             setPhase("finished");
             fetchFinalScore(pid);
+            toast.success("Game over! Thanks for playing 🐎", { duration: 4000 });
           }
 
           if (p.state === "lobby") {
@@ -346,7 +348,7 @@ export default function PlayPage() {
       .single();
 
     if (error || !data) {
-      setJoinError("Failed to join. Please try again.");
+      setJoinError("Couldn't grab your seat. Check your connection and try again.");
       setIsJoining(false);
       return;
     }
@@ -363,6 +365,7 @@ export default function PlayPage() {
       roomId,
     });
 
+    toast.success(`Welcome, ${name}! Your horse is "${horse}" 🐎`, { duration: 4000 });
     setPhase("lobby");
     setIsJoining(false);
   }
@@ -376,6 +379,8 @@ export default function PlayPage() {
     setSelectedAnswer(answer);
     setTimeTakenMs(taken);
     setPhase("answered");
+
+    toast(`Answer locked in! ✅`, { duration: 2000 });
 
     await supabase.from("qt_answers").insert({
       question_id: currentQuestion.id,
@@ -412,7 +417,7 @@ export default function PlayPage() {
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   className="w-10 h-10 border-4 border-navy/20 border-t-navy rounded-full"
                 />
-                <p className="text-ink/60 font-medium">Finding room...</p>
+                <p className="text-ink/60 font-medium">Looking for the game room...</p>
               </div>
             </AnimatedContainer>
           )}
@@ -453,10 +458,10 @@ export default function PlayPage() {
                       🐎
                     </motion.div>
                     <h1 className="text-2xl font-extrabold text-navy">
-                      Join the Quiz
+                      Join the Game
                     </h1>
                     <p className="text-ink/50 mt-1">
-                      Enter your name to play
+                      Enter your name and jump in 🎉
                     </p>
                   </div>
 
@@ -494,7 +499,7 @@ export default function PlayPage() {
                       type="submit"
                       disabled={!nameInput.trim() || isJoining}
                     >
-                      {isJoining ? "Joining..." : "Join Game"}
+                      {isJoining ? "Getting your seat..." : "Join the Game"}
                     </Button>
                   </form>
                 </div>

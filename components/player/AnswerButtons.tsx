@@ -66,7 +66,7 @@ export default function AnswerButtons({
             return (
               <motion.button
                 key={index}
-                whileTap={isLockedIn ? undefined : { scale: 0.9 }}
+                whileTap={isLockedIn ? undefined : { scale: 0.88 }}
                 animate={
                   reduced
                     ? undefined
@@ -83,6 +83,8 @@ export default function AnswerButtons({
                       : isWrongSelected
                       ? shakeAnimation
                       : { opacity: 0.4, scale: 0.95, filter: "grayscale(80%)" }
+                    : isSelected
+                    ? { scale: [1, 1.1, 0.95, 1.02, 1] }
                     : undefined
                 }
                 transition={
@@ -90,6 +92,8 @@ export default function AnswerButtons({
                     ? isCorrectOption
                       ? { duration: 0.5, ease: "easeOut" }
                       : { duration: 0.3, delay: 0.1, ease: "easeOut" }
+                    : isSelected
+                    ? { duration: 0.45, ease: "easeOut" }
                     : undefined
                 }
                 className={`${
@@ -141,7 +145,7 @@ export default function AnswerButtons({
             return (
               <motion.button
                 key={val}
-                whileTap={isLockedIn ? undefined : { scale: 0.9 }}
+                whileTap={isLockedIn ? undefined : { scale: 0.88 }}
                 animate={
                   reduced
                     ? undefined
@@ -154,6 +158,8 @@ export default function AnswerButtons({
                       : isWrongSelected
                       ? shakeAnimation
                       : { opacity: 0.35, scale: 0.95, filter: "grayscale(60%)" }
+                    : isSelected
+                    ? { scale: [1, 1.1, 0.95, 1.02, 1] }
                     : undefined
                 }
                 transition={
@@ -161,6 +167,8 @@ export default function AnswerButtons({
                     ? isCorrectOption
                       ? { type: "spring", stiffness: 300, damping: 15 }
                       : { duration: 0.3, delay: 0.08, ease: "easeOut" }
+                    : isSelected
+                    ? { duration: 0.45, ease: "easeOut" }
                     : undefined
                 }
                 className={`rounded-xl p-6 min-h-[80px] ${
