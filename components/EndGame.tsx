@@ -289,7 +289,7 @@ export default function EndGame({
 
               {/* Correct count */}
               <span className="text-xs text-[#1B2B5E]/40 font-medium">
-                {entry.rank <= totalQuestions ? `${totalQuestions - entry.rank + 1}` : "0"}/{totalQuestions}
+                {entry.correct_count ?? "?"}/{totalQuestions}
               </span>
 
               {/* Avg Speed */}

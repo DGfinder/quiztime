@@ -105,6 +105,7 @@ export interface LeaderboardEntry {
   score: number;
   rank: number;
   avg_time_ms?: number;
+  correct_count?: number;
 }
 
 export interface LeaderboardUpdatePayload {

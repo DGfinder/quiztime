@@ -426,7 +426,7 @@ export default function HostControlPanel() {
 
   // ---------- LEADERBOARD ----------
 
-  const buildLeaderboard = useCallback((avgTimeMap?: Record<string, number>): LeaderboardEntry[] => {
+  const buildLeaderboard = useCallback((avgTimeMap?: Record<string, number>, correctCountMap?: Record<string, number>): LeaderboardEntry[] => {
     const sorted = [...players].sort((a, b) => b.score - a.score);
     return sorted.map((p, idx) => ({
       player_id: p.id,
@@ -435,6 +435,7 @@ export default function HostControlPanel() {
       score: p.score,
       rank: idx + 1,
       avg_time_ms: avgTimeMap?.[p.id],
+      correct_count: correctCountMap?.[p.id],
     }));
   }, [players]);
 
@@ -519,7 +520,26 @@ export default function HostControlPanel() {
       }
     }
 
-    const entries = buildLeaderboard(avgTimeMap);
+    // Compute per-player correct answer count (all answers, not just correct)
+    const correctCountMap: Record<string, number> = {};
+    if (room) {
+      const questionIds = questionsRef.current.map((q) => q.id);
+      if (questionIds.length > 0) {
+        const { data: allAnswers } = await supabase
+          .from("qt_answers")
+          .select("player_id, is_correct")
+          .in("question_id", questionIds);
+        if (allAnswers) {
+          for (const a of allAnswers) {
+            if (a.is_correct) {
+              correctCountMap[a.player_id] = (correctCountMap[a.player_id] || 0) + 1;
+            }
+          }
+        }
+      }
+    }
+
+    const entries = buildLeaderboard(avgTimeMap, correctCountMap);
     setLeaderboard(entries);
     if (entries.length > 0) {
       toast.success(`Game over! 🏆 ${entries[0].player_name} wins with ${entries[0].score.toLocaleString()} pts`);
