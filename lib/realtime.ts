@@ -137,9 +137,14 @@ export function useTimer(
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  // Only reset when timer transitions from stopped→running (not when durationSeconds changes mid-tick)
+  const wasRunningRef = useRef(false);
   useEffect(() => {
-    setTimeRemaining(durationSeconds);
-  }, [durationSeconds]);
+    if (isRunning && !wasRunningRef.current) {
+      setTimeRemaining(durationSeconds);
+    }
+    wasRunningRef.current = isRunning;
+  }, [isRunning, durationSeconds]);
 
   useEffect(() => {
     if (!isRunning) {
