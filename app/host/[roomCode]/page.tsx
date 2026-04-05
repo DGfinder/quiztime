@@ -38,6 +38,7 @@ import VideoPlayer from "@/components/host/VideoPlayer";
 import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
+import DisplayScreen from "./display/page";
 
 const emojiAvatars = [
   "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
@@ -50,6 +51,11 @@ export default function HostControlPanel() {
   const searchParams = useSearchParams();
   const roomCode = params.roomCode as string;
   const templateId = searchParams.get("templateId");
+
+  // View mode toggle: host panel vs display/projector screen
+  const [viewMode, setViewMode] = useState<'host' | 'display'>(
+    searchParams.get('view') === 'display' ? 'display' : 'host'
+  );
 
   // Core data
   const [room, setRoom] = useState<Room | null>(null);
@@ -692,11 +698,37 @@ export default function HostControlPanel() {
   const circumference = 2 * Math.PI * 20;
   const timerDashoffset = circumference * (1 - timerFraction);
 
+  // ---------- VIEW MODE TOGGLE ----------
+
+  const viewToggle = (
+    <button
+      onClick={() => setViewMode(v => v === 'host' ? 'display' : 'host')}
+      className="fixed bottom-6 right-6 z-[100] flex items-center gap-2 px-4 py-3 rounded-2xl bg-black/70 backdrop-blur-md border border-white/10 shadow-xl text-white text-sm font-bold hover:bg-black/80 active:scale-95 transition-all"
+    >
+      <span className="material-symbols-outlined text-base">
+        {viewMode === 'host' ? 'tv' : 'dashboard'}
+      </span>
+      {viewMode === 'host' ? 'Display View' : 'Host Panel'}
+    </button>
+  );
+
+  // ---------- DISPLAY MODE ----------
+
+  if (viewMode === 'display') {
+    return (
+      <>
+        {viewToggle}
+        <DisplayScreen />
+      </>
+    );
+  }
+
   // ---------- LOADING / ERROR ----------
 
   if (loading) {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center">
+        {viewToggle}
         <motion.div
           className="w-12 h-12 border-4 border-surface/20 border-t-surface rounded-full"
           animate={{ rotate: 360 }}
@@ -709,6 +741,7 @@ export default function HostControlPanel() {
   if (error || !room || !quiz) {
     return (
       <div className="min-h-screen bg-primary flex items-center justify-center px-4">
+        {viewToggle}
         <AnimatedContainer className="text-center">
           <h1 className="text-3xl font-bold text-white mb-4">
             {error || "Something went wrong"}
@@ -725,6 +758,8 @@ export default function HostControlPanel() {
 
   if (gameState === "lobby") {
     return (
+      <>
+      {viewToggle}
       <Lobby
         players={players.map((p) => ({
           name: p.name,
@@ -738,6 +773,7 @@ export default function HostControlPanel() {
         canStart={players.length > 0}
         displayUrl={displayUrl}
       />
+      </>
     );
   }
 
@@ -745,6 +781,7 @@ export default function HostControlPanel() {
 
   return (
     <div className="bg-surface text-on-surface min-h-screen flex flex-col overflow-hidden">
+      {viewToggle}
       {/* Top Header */}
       <header className="bg-surface-bright flex justify-between items-center w-full px-8 py-4 z-50">
         <div className="flex items-center gap-6">
