@@ -4,17 +4,28 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
  * Hook to subscribe to a Supabase Realtime channel for a room.
+ * Uses a handler registry so onBroadcast works even before channel is subscribed.
  */
 export function useRoomChannel(roomCode: string) {
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const listenersRef = useRef<Map<string, Set<(p: Record<string, unknown>) => void>>>(new Map());
 
   useEffect(() => {
     const channel = supabase.channel(`room:${roomCode}`);
     channelRef.current = channel;
+
+    // Re-attach any listeners that were registered before channel was created
+    listenersRef.current.forEach((_handlers, event) => {
+      channel.on('broadcast', { event }, ({ payload }) => {
+        listenersRef.current.get(event)?.forEach(h => h(payload as Record<string, unknown>));
+      });
+    });
+
     channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [roomCode]);
 
@@ -31,9 +42,14 @@ export function useRoomChannel(roomCode: string) {
 
   const onBroadcast = useCallback(
     (event: string, callback: (payload: Record<string, unknown>) => void) => {
-      channelRef.current?.on("broadcast", { event }, ({ payload }) => {
-        callback(payload as Record<string, unknown>);
-      });
+      if (!listenersRef.current.has(event)) {
+        listenersRef.current.set(event, new Set());
+        // Attach to channel if it already exists
+        channelRef.current?.on('broadcast', { event }, ({ payload }) => {
+          listenersRef.current.get(event)?.forEach(h => h(payload as Record<string, unknown>));
+        });
+      }
+      listenersRef.current.get(event)!.add(callback);
     },
     []
   );

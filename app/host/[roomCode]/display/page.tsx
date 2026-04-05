@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useRoomChannel, usePlayersSubscription } from "@/lib/realtime";
-import { isInSuspensePhase, scramblePositions } from "@/lib/suspense";
-import HorseRace from "@/components/leaderboard/HorseRace";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 import TimerBar from "@/components/player/TimerBar";
 import EndGame from "@/components/EndGame";
@@ -17,6 +15,11 @@ import type {
   GameState,
   LeaderboardEntry,
 } from "@/types/quiz";
+
+const emojiAvatars = [
+  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
+  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
+];
 
 export default function DisplayScreen() {
   const params = useParams();
@@ -33,7 +36,6 @@ export default function DisplayScreen() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [showCorrectOverlay, setShowCorrectOverlay] = useState(false);
-  const [suspenseMode, setSuspenseMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Realtime
@@ -64,6 +66,28 @@ export default function DisplayScreen() {
       if (playersData) setPlayers(playersData as Player[]);
 
       if (roomData.status === "finished") setGameState("finished");
+
+      // Late-join catch-up: if game is already active
+      if (roomData.status === "active" && roomData.current_question_index >= 0 && roomData.current_quiz_id) {
+        const { data: questions } = await supabase
+          .from('qt_questions')
+          .select('*')
+          .eq('quiz_id', roomData.current_quiz_id)
+          .order('order_index', { ascending: true });
+
+        if (questions && questions.length > 0) {
+          setTotalQuestions(questions.length);
+          const idx = roomData.current_question_index;
+          const q = questions[idx];
+          if (q) {
+            setCurrentQuestion(q as Question);
+            setQuestionNumber(idx + 1);
+            setTimeLimit(q.time_limit);
+            setTimeRemaining(0);
+            setGameState('question_end');
+          }
+        }
+      }
 
       // Get quiz info for total questions
       const { data: quizData } = await supabase
@@ -145,9 +169,6 @@ export default function DisplayScreen() {
       }
     });
 
-    onBroadcast("suspense_mode", (payload) => {
-      setSuspenseMode(payload.enabled as boolean);
-    });
   }, [onBroadcast, room]);
 
   // Build live leaderboard from players
@@ -162,24 +183,6 @@ export default function DisplayScreen() {
       rank: idx + 1,
     }));
   }, [players, leaderboard]);
-
-  const maxScore = useMemo(
-    () => Math.max(...liveLeaderboard.map((e) => e.score), 1),
-    [liveLeaderboard]
-  );
-
-  // Scrambled positions for suspense mode
-  const scrambledPositions = useMemo(() => {
-    if (!suspenseMode) return undefined;
-    const scrambled = scramblePositions(
-      liveLeaderboard,
-      questionNumber,
-      totalQuestions
-    );
-    const map = new Map<string, number>();
-    scrambled.forEach((s) => map.set(s.player_id, s.trackPosition));
-    return map;
-  }, [suspenseMode, liveLeaderboard, questionNumber, totalQuestions]);
 
   const joinUrl =
     typeof window !== "undefined"
@@ -407,27 +410,44 @@ export default function DisplayScreen() {
         )}
       </AnimatePresence>
 
-      {/* Horse race / leaderboard - bottom section */}
-      <div className="flex-1 min-h-0">
+      {/* Emoji leaderboard - bottom section */}
+      <div className="flex-1 min-h-0 px-12 py-6 overflow-y-auto">
         {liveLeaderboard.length > 0 ? (
-          <HorseRace
-            entries={liveLeaderboard}
-            maxScore={maxScore}
-            isFinal={false}
-            scrambledPositions={scrambledPositions}
-            questionProgress={
-              questionNumber > 0
-                ? `Q${questionNumber}/${totalQuestions}`
-                : undefined
-            }
-            suspenseMode={
-              suspenseMode ||
-              isInSuspensePhase(questionNumber, totalQuestions)
-            }
-          />
+          <div className="space-y-2 max-w-4xl mx-auto">
+            {liveLeaderboard.slice(0, 10).map((entry, idx) => (
+              <motion.div
+                key={entry.player_id}
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.06 }}
+                className={`flex items-center gap-4 px-6 py-3 rounded-xl ${
+                  idx === 0
+                    ? "bg-[#FF6B6B]/20 border border-[#FF6B6B]/40"
+                    : idx < 3
+                    ? "bg-[#FFB95F]/10 border border-[#FFB95F]/30"
+                    : "bg-white/5 border border-white/10"
+                }`}
+              >
+                <span className="text-2xl font-black w-10 text-center text-[#FAFAF7]/70">
+                  {entry.rank}
+                </span>
+                <span className="text-3xl">
+                  {emojiAvatars[idx % emojiAvatars.length]}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[#FAFAF7] text-lg truncate">
+                    {entry.player_name}
+                  </p>
+                </div>
+                <span className="font-mono font-bold text-xl text-[#FF6B6B]">
+                  {entry.score.toLocaleString()}
+                </span>
+              </motion.div>
+            ))}
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full text-[#FAFAF7]/30 text-xl">
-            Waiting for the race to begin...
+            Waiting for the game to begin...
           </div>
         )}
       </div>

@@ -39,6 +39,11 @@ import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
 
+const emojiAvatars = [
+  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
+  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
+];
+
 export default function HostControlPanel() {
   const params = useParams();
   const router = useRouter();
@@ -1107,12 +1112,12 @@ export default function HostControlPanel() {
                   >
                     {entry.rank}
                   </span>
+                  <span className="text-2xl">
+                    {emojiAvatars[idx % emojiAvatars.length]}
+                  </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-primary font-bold truncate">
                       {entry.player_name}
-                    </p>
-                    <p className="text-outline text-sm truncate">
-                      {entry.horse_name}
                     </p>
                   </div>
                   <span className="text-primary font-mono font-bold text-xl">

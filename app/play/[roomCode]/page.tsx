@@ -155,7 +155,7 @@ export default function PlayPage() {
     async function verifyRoom() {
       const { data, error } = await supabase
         .from("qt_rooms")
-        .select("id, status")
+        .select("id, status, current_question_index, current_quiz_id")
         .eq("room_code", roomCode)
         .single();
 
@@ -191,6 +191,32 @@ export default function PlayPage() {
           setPlayerName(playerRow.name);
           setHorseName(playerRow.horse_name);
           setTotalScore(playerRow.score);
+
+          // Late-join catch-up: if game is already active, jump to current question
+          if (data.status === 'active' && data.current_question_index >= 0 && data.current_quiz_id) {
+            const { data: questions } = await supabase
+              .from('qt_questions')
+              .select('*')
+              .eq('quiz_id', data.current_quiz_id)
+              .order('order_index', { ascending: true });
+
+            if (!cancelled && questions && questions.length > 0) {
+              const idx = data.current_question_index;
+              const q = questions[idx];
+              if (q) {
+                const safeQ = { ...q };
+                delete safeQ.correct_answer;
+                setCurrentQuestion(safeQ);
+                setQuestionNumber(idx + 1);
+                setTotalQuestions(questions.length);
+                setTimeLimit(q.time_limit);
+                setTimeRemaining(0);
+                setPhase('question');
+                return;
+              }
+            }
+          }
+
           setPhase("lobby");
           return;
         }
