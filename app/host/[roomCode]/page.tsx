@@ -38,7 +38,7 @@ import VideoPlayer from "@/components/host/VideoPlayer";
 import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
-import DisplayScreen from "./display/page";
+import DisplayView from "@/components/host/DisplayView";
 
 const emojiAvatars = [
   "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
@@ -717,8 +717,30 @@ export default function HostControlPanel() {
   if (viewMode === 'display') {
     return (
       <>
-        {viewToggle}
-        <DisplayScreen />
+        <DisplayView
+          gameState={gameState}
+          currentQuestion={currentQuestion}
+          timeRemaining={timeRemaining}
+          timeLimit={currentQuestion?.time_limit ?? 15}
+          players={players}
+          leaderboard={leaderboard}
+          currentAnswers={currentAnswers}
+          answerRevealed={answerRevealed}
+          questionNumber={currentQuestionIndex + 1}
+          totalQuestions={questions.length}
+          roomCode={roomCode}
+          onReveal={revealAnswer}
+          onShowLeaderboard={showLeaderboard}
+          onNextQuestion={nextQuestion}
+          onFinishGame={finishGame}
+        />
+        <button
+          onClick={() => setViewMode('host')}
+          className="fixed bottom-6 right-6 z-[100] bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-2 rounded-xl border border-white/20 hover:bg-black/70 flex items-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-[14px]">dashboard</span>
+          Host Panel
+        </button>
       </>
     );
   }
