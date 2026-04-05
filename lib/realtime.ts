@@ -96,8 +96,20 @@ export function useAnswersSubscription(
   questionId: string,
   onAnswer: (answer: Record<string, unknown>) => void
 ) {
+  const onAnswerRef = useRef(onAnswer);
+  onAnswerRef.current = onAnswer;
+
   useEffect(() => {
     if (!questionId) return;
+
+    // Fetch any answers already submitted before subscription was set up
+    supabase
+      .from("qt_answers")
+      .select("*")
+      .eq("question_id", questionId)
+      .then(({ data }) => {
+        if (data) data.forEach((row) => onAnswerRef.current(row));
+      });
 
     const channel = supabase
       .channel(`answers:${questionId}`)
@@ -110,7 +122,7 @@ export function useAnswersSubscription(
           filter: `question_id=eq.${questionId}`,
         },
         (payload) => {
-          onAnswer(payload.new as Record<string, unknown>);
+          onAnswerRef.current(payload.new as Record<string, unknown>);
         }
       )
       .subscribe();
@@ -118,7 +130,7 @@ export function useAnswersSubscription(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [questionId, onAnswer]);
+  }, [questionId]);
 }
 
 /**

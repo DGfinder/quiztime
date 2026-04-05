@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
@@ -53,7 +53,11 @@ export default function DisplayScreen() {
   const [answerDistribution, setAnswerDistribution] = useState<AnswerDistribution[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { onBroadcast } = useRoomChannel(roomCode);
+  const { onBroadcast, broadcast } = useRoomChannel(roomCode);
+
+  // Ref for currentQuestion so broadcast handlers always see latest value
+  const currentQuestionRef = useRef(currentQuestion);
+  currentQuestionRef.current = currentQuestion;
 
   // Fetch room + players on mount
   useEffect(() => {
@@ -276,15 +280,22 @@ export default function DisplayScreen() {
       setTimeLimit(payload.time_limit as number);
     });
 
-    onBroadcast("answer_revealed", (payload) => {
+    onBroadcast("answer_revealed", async (payload) => {
       const answer = payload.correctAnswer as string;
       setCorrectAnswer(answer);
-      if (currentQuestion) {
-        fetchAnswerDistribution(
-          payload.questionId as string,
-          answer,
-          currentQuestion
-        );
+      setGameState("question_end");
+
+      let q = currentQuestionRef.current;
+      if (!q && payload.questionId) {
+        const { data } = await supabase
+          .from("qt_questions")
+          .select("*")
+          .eq("id", payload.questionId)
+          .single();
+        if (data) q = data as Question;
+      }
+      if (q) {
+        fetchAnswerDistribution(payload.questionId as string, answer, q);
       }
     });
 
@@ -302,7 +313,7 @@ export default function DisplayScreen() {
           });
       }
     });
-  }, [onBroadcast, room, currentQuestion, fetchAnswerDistribution]);
+  }, [onBroadcast, room]);
 
   // Build live leaderboard from players
   const liveLeaderboard = useMemo((): LeaderboardEntry[] => {
@@ -339,6 +350,43 @@ export default function DisplayScreen() {
     return correctAnswer;
   }, [correctAnswer, currentQuestion]);
 
+  // Host toolbar - reveal answer from the projector screen
+  const hostToolbar = (
+    <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
+      <span className="text-white/40 text-xs font-mono">Room {roomCode.toUpperCase()}</span>
+
+      {(gameState === "question_end" || gameState === "question_start") && !correctAnswer && currentQuestionRef.current && (
+        <button
+          onClick={async () => {
+            const q = currentQuestionRef.current;
+            if (!q) return;
+            const { data } = await supabase
+              .from("qt_questions")
+              .select("correct_answer")
+              .eq("id", q.id)
+              .single();
+            if (data) {
+              broadcast("answer_revealed", {
+                questionId: q.id,
+                correctAnswer: data.correct_answer,
+                playerResults: {},
+              });
+              fetchAnswerDistribution(q.id, data.correct_answer, q);
+              setCorrectAnswer(data.correct_answer);
+            }
+          }}
+          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+        >
+          Reveal Answer
+        </button>
+      )}
+
+      {gameState === "question_end" && correctAnswer && (
+        <span className="text-green-400 text-sm font-bold">✓ Revealed</span>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#021549] flex items-center justify-center">
@@ -355,6 +403,7 @@ export default function DisplayScreen() {
   if (gameState === "lobby") {
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col items-center p-8 overflow-hidden">
+        {hostToolbar}
         {/* Top: Logo */}
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
@@ -464,6 +513,7 @@ export default function DisplayScreen() {
   if (gameState === "leaderboard") {
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col items-center p-12">
+        {hostToolbar}
         <motion.h2
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -522,6 +572,7 @@ export default function DisplayScreen() {
   ) {
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col p-12">
+        {hostToolbar}
         {/* Question text (smaller) */}
         <div className="mb-8">
           <span className="text-[#FAFAF7]/40 text-sm font-bold uppercase tracking-widest">
@@ -624,6 +675,7 @@ export default function DisplayScreen() {
 
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col relative">
+        {hostToolbar}
         {/* Q number top left */}
         <div className="absolute top-8 left-12 z-10">
           <span className="px-4 py-2 rounded-full bg-white/10 text-sm font-bold uppercase tracking-widest">
@@ -718,6 +770,7 @@ export default function DisplayScreen() {
   // Fallback
   return (
     <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex items-center justify-center">
+      {hostToolbar}
       <p className="text-xl text-[#FAFAF7]/40">Waiting...</p>
     </div>
   );
