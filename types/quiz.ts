@@ -22,6 +22,8 @@ export interface Room {
   host_id: string;
   status: RoomStatus;
   created_at: string;
+  current_question_index?: number;
+  current_quiz_id?: string;
 }
 
 export interface Quiz {

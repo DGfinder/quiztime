@@ -234,7 +234,7 @@ export default function HostControlPanel() {
 
     await supabase
       .from("qt_rooms")
-      .update({ status: "active" })
+      .update({ status: "active", current_quiz_id: quiz?.id })
       .eq("id", room.id);
 
     setRoom((prev) => (prev ? { ...prev, status: "active" } : prev));
@@ -242,7 +242,7 @@ export default function HostControlPanel() {
     startQuestion(0);
   };
 
-  const startQuestion = (index: number) => {
+  const startQuestion = async (index: number) => {
     const question = questionsRef.current[index];
     if (!question) return;
 
@@ -286,6 +286,15 @@ export default function HostControlPanel() {
       state: "question_start",
       current_question_index: index,
     });
+
+    // Persist current question index to DB for late-join catch-up
+    if (room) {
+      await supabase.from('qt_rooms').update({
+        current_question_index: index,
+        current_quiz_id: quiz?.id,
+        status: 'active',
+      }).eq('id', room.id);
+    }
   };
 
   // ---------- SCORING ----------
@@ -676,9 +685,9 @@ export default function HostControlPanel() {
       {/* Top Header */}
       <header className="bg-surface-bright flex justify-between items-center w-full px-8 py-4 z-50">
         <div className="flex items-center gap-6">
-          <span className="text-xl font-bold text-primary-container tracking-tighter">
+          <button onClick={() => router.push('/host/dashboard')} className="text-xl font-bold text-primary-container tracking-tighter hover:opacity-70 transition-opacity">
             QuizTime
-          </span>
+          </button>
           <div className="h-6 w-px bg-outline-variant/20" />
           <div className="flex flex-col">
             <span className="text-[10px] uppercase tracking-widest font-bold text-outline">
@@ -1207,20 +1216,20 @@ export default function HostControlPanel() {
               totalQuestions={questions.length}
               isHost={true}
               onPlayAgain={async () => {
-                if (!room) return;
-                // Reset room to lobby, clear scores
+                if (!room || !quiz) return;
+                // Delete all answers for this room's questions
+                const { data: qIds } = await supabase.from('qt_questions').select('id').eq('quiz_id', quiz.id);
+                if (qIds?.length) {
+                  await supabase.from('qt_answers').delete().in('question_id', qIds.map(q => q.id));
+                }
+                // Delete ALL players — they'll rejoin via QR code
+                await supabase.from('qt_players').delete().eq('room_id', room.id);
+                setPlayers([]);
+                // Reset room to lobby
                 await supabase
                   .from("qt_rooms")
-                  .update({ status: "lobby" })
+                  .update({ status: "lobby", current_question_index: -1 })
                   .eq("id", room.id);
-                // Reset all player scores
-                for (const p of players) {
-                  await supabase
-                    .from("qt_players")
-                    .update({ score: 0 })
-                    .eq("id", p.id);
-                }
-                setPlayers((prev) => prev.map((p) => ({ ...p, score: 0 })));
                 setCurrentQuestionIndex(0);
                 setLeaderboard([]);
                 setGameState("lobby");
