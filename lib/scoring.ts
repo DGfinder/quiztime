@@ -1,6 +1,9 @@
+const READING_GRACE_MS = 1000; // First 1s is free — no score decay
+
 /**
  * Calculate points for a standard correct answer with time decay.
  * points = Math.round(1000 * (timeRemaining / timeLimit))
+ * First 1 second is a grace period — scoring starts after that.
  */
 export function calculateTimeDecayPoints(
   timeRemainingMs: number,
@@ -8,7 +11,9 @@ export function calculateTimeDecayPoints(
   pointsBase: number = 1000
 ): number {
   if (timeRemainingMs <= 0) return 0;
-  const ratio = Math.min(timeRemainingMs / timeLimitMs, 1);
+  // Treat first second as grace — shift time remaining up by grace amount
+  const adjustedRemaining = Math.min(timeRemainingMs + READING_GRACE_MS, timeLimitMs);
+  const ratio = Math.min(adjustedRemaining / timeLimitMs, 1);
   return Math.round(pointsBase * ratio);
 }
 
