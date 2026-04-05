@@ -1015,14 +1015,9 @@ export default function PlayPage() {
                 Thanks for playing! 🐎
               </motion.p>
 
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full max-w-xs mt-2"
-                onClick={() => router.push("/")}
-              >
-                Back to Home
-              </Button>
+              <p className="text-sm text-outline/60 mt-4 text-center">
+                You can close this tab now.
+              </p>
             </AnimatedContainer>
           )}
         </AnimatePresence>
