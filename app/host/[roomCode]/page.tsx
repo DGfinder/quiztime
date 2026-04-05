@@ -89,20 +89,17 @@ export default function HostControlPanel() {
   // Realtime channel
   const { broadcast, onBroadcast } = useRoomChannel(roomCode);
 
+  // Refs so display toolbar can call these before they're defined below
+  const nextQuestionRef = useRef<() => void>(() => {});
+  const showLeaderboardRef = useRef<() => void>(() => {});
+  const finishGameRef = useRef<() => Promise<void>>(async () => {});
+
   // Listen for display screen toolbar requests
   useEffect(() => {
-    onBroadcast("next_question_request", (payload) => {
-      const nextIdx = (payload.nextIndex as number) ?? (currentQuestionIndexRef.current + 1);
-      nextQuestion();
-      void nextIdx;
-    });
-    onBroadcast("show_leaderboard_request", () => {
-      showLeaderboard();
-    });
-    onBroadcast("finish_game_request", () => {
-      finishGame();
-    });
-  }, [onBroadcast]); // eslint-disable-line react-hooks/exhaustive-deps
+    onBroadcast("next_question_request", () => { nextQuestionRef.current(); });
+    onBroadcast("show_leaderboard_request", () => { showLeaderboardRef.current(); });
+    onBroadcast("finish_game_request", () => { void finishGameRef.current(); });
+  }, [onBroadcast]);
 
   // Timer
   const handleTimerTick = useCallback(
@@ -485,8 +482,28 @@ export default function HostControlPanel() {
     setAnswerRevealed(true);
   };
 
-  const showLeaderboard = () => {
-    const entries = buildLeaderboard();
+  const showLeaderboard = async () => {
+    // Fetch fresh scores from DB before showing leaderboard
+    let latestPlayers = players;
+    if (room) {
+      const { data } = await supabase
+        .from("qt_players")
+        .select("*")
+        .eq("room_id", room.id)
+        .order("score", { ascending: false });
+      if (data) {
+        latestPlayers = data as Player[];
+        setPlayers(latestPlayers);
+      }
+    }
+    const sorted = [...latestPlayers].sort((a, b) => b.score - a.score);
+    const entries = sorted.map((p, idx) => ({
+      player_id: p.id,
+      player_name: p.name,
+      horse_name: p.horse_name,
+      score: p.score,
+      rank: idx + 1,
+    }));
     setLeaderboard(entries);
     setGameState("leaderboard");
 
@@ -496,6 +513,7 @@ export default function HostControlPanel() {
       current_question_index: currentQuestionIndex,
     });
   };
+  showLeaderboardRef.current = showLeaderboard;
 
   const nextQuestion = () => {
     const nextIdx = currentQuestionIndex + 1;
@@ -505,9 +523,11 @@ export default function HostControlPanel() {
       finishGame();
     }
   };
+  nextQuestionRef.current = nextQuestion;
 
   const finishGame = async () => {
     setGameState("finished");
+    finishGameRef.current = finishGame;
 
     // Compute per-player average time (correct answers only)
     const avgTimeMap: Record<string, number> = {};
