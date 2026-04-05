@@ -189,23 +189,23 @@ export default function DisplayScreen() {
           question.type === "video_question" ||
           question.type === "audio_question")
       ) {
-        // Count per option index
+        // Count per option text (answer_value stores the full option text)
         const counts: Record<string, number> = {};
-        options.forEach((_, i) => {
-          counts[String(i)] = 0;
-        });
+        options.forEach((label) => { counts[label] = 0; });
         for (const a of answers) {
           const val = a.answer_value;
-          if (counts[val] !== undefined) {
-            counts[val]++;
+          if (counts[val] !== undefined) counts[val]++;
+          // Also handle index-based submissions for backwards compat
+          else if (!isNaN(Number(val)) && options[Number(val)]) {
+            counts[options[Number(val)]]++;
           }
         }
         setAnswerDistribution(
-          options.map((label, i) => ({
+          options.map((label) => ({
             label,
-            count: counts[String(i)] || 0,
-            percent: total > 0 ? ((counts[String(i)] || 0) / total) * 100 : 0,
-            isCorrect: String(i) === correct,
+            count: counts[label] || 0,
+            percent: total > 0 ? ((counts[label] || 0) / total) * 100 : 0,
+            isCorrect: label === correct,
           }))
         );
       } else if (question.type === "true_false") {
@@ -350,11 +350,12 @@ export default function DisplayScreen() {
     return correctAnswer;
   }, [correctAnswer, currentQuestion]);
 
-  // Host toolbar - reveal answer from the projector screen
+  // Host toolbar - full controls from projector screen
   const hostToolbar = (
-    <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
-      <span className="text-white/40 text-xs font-mono">Room {roomCode.toUpperCase()}</span>
+    <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 shadow-xl">
+      <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
+      {/* Reveal Answer - shown during active question before reveal */}
       {(gameState === "question_end" || gameState === "question_start") && !correctAnswer && currentQuestionRef.current && (
         <button
           onClick={async () => {
@@ -373,16 +374,55 @@ export default function DisplayScreen() {
               });
               fetchAnswerDistribution(q.id, data.correct_answer, q);
               setCorrectAnswer(data.correct_answer);
+              setGameState("question_end");
             }
           }}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 transition-opacity"
+          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
         >
-          Reveal Answer
+          Reveal
         </button>
       )}
 
+      {/* Show Leaderboard - after reveal */}
       {gameState === "question_end" && correctAnswer && (
-        <span className="text-green-400 text-sm font-bold">✓ Revealed</span>
+        <button
+          onClick={() => {
+            broadcast("show_leaderboard_request", {});
+            setGameState("leaderboard");
+          }}
+          className="px-4 py-1.5 rounded-xl bg-[#8594CD] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+        >
+          Leaderboard
+        </button>
+      )}
+
+      {/* Next Question - after reveal or from leaderboard */}
+      {(gameState === "question_end" && correctAnswer || gameState === "leaderboard") && questionNumber < totalQuestions && (
+        <button
+          onClick={() => {
+            broadcast("next_question_request", { nextIndex: questionNumber });
+          }}
+          className="px-4 py-1.5 rounded-xl bg-white/20 text-white text-sm font-bold hover:bg-white/30 active:scale-95 transition-all"
+        >
+          Next →
+        </button>
+      )}
+
+      {/* Finish Game */}
+      {(gameState === "question_end" && correctAnswer || gameState === "leaderboard") && questionNumber >= totalQuestions && (
+        <button
+          onClick={() => {
+            broadcast("finish_game_request", {});
+          }}
+          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+        >
+          Finish 🏆
+        </button>
+      )}
+
+      {/* Question progress */}
+      {questionNumber > 0 && (
+        <span className="text-white/30 text-xs ml-1">{questionNumber}/{totalQuestions}</span>
       )}
     </div>
   );

@@ -87,7 +87,22 @@ export default function HostControlPanel() {
   );
 
   // Realtime channel
-  const { broadcast } = useRoomChannel(roomCode);
+  const { broadcast, onBroadcast } = useRoomChannel(roomCode);
+
+  // Listen for display screen toolbar requests
+  useEffect(() => {
+    onBroadcast("next_question_request", (payload) => {
+      const nextIdx = (payload.nextIndex as number) ?? (currentQuestionIndexRef.current + 1);
+      nextQuestion();
+      void nextIdx;
+    });
+    onBroadcast("show_leaderboard_request", () => {
+      showLeaderboard();
+    });
+    onBroadcast("finish_game_request", () => {
+      finishGame();
+    });
+  }, [onBroadcast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer
   const handleTimerTick = useCallback(
