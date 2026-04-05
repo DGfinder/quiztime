@@ -93,12 +93,14 @@ export default function HostControlPanel() {
   const nextQuestionRef = useRef<() => void>(() => {});
   const showLeaderboardRef = useRef<() => void>(() => {});
   const finishGameRef = useRef<() => Promise<void>>(async () => {});
+  const revealAnswerRef = useRef<() => Promise<void>>(async () => {});
 
   // Listen for display screen toolbar requests
   useEffect(() => {
     onBroadcast("next_question_request", () => { nextQuestionRef.current(); });
-    onBroadcast("show_leaderboard_request", () => { showLeaderboardRef.current(); });
+    onBroadcast("show_leaderboard_request", () => { void showLeaderboardRef.current(); });
     onBroadcast("finish_game_request", () => { void finishGameRef.current(); });
+    onBroadcast("reveal_answer_request", () => { void revealAnswerRef.current(); });
   }, [onBroadcast]);
 
   // Timer
@@ -453,6 +455,7 @@ export default function HostControlPanel() {
 
   const revealAnswer = async () => {
     if (!currentQuestion) return;
+    revealAnswerRef.current = revealAnswer;
 
     // Build playerResults from currentAnswers (already scored)
     const playerResults: Record<string, { isCorrect: boolean; pointsEarned: number }> = {};

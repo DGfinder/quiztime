@@ -355,27 +355,12 @@ export default function DisplayScreen() {
     <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 shadow-xl">
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
-      {/* Reveal Answer - shown during active question before reveal */}
+      {/* Reveal Answer - asks the host page to run scoring + reveal */}
       {(gameState === "question_end" || gameState === "question_start") && !correctAnswer && currentQuestionRef.current && (
         <button
-          onClick={async () => {
-            const q = currentQuestionRef.current;
-            if (!q) return;
-            const { data } = await supabase
-              .from("qt_questions")
-              .select("correct_answer")
-              .eq("id", q.id)
-              .single();
-            if (data) {
-              broadcast("answer_revealed", {
-                questionId: q.id,
-                correctAnswer: data.correct_answer,
-                playerResults: {},
-              });
-              fetchAnswerDistribution(q.id, data.correct_answer, q);
-              setCorrectAnswer(data.correct_answer);
-              setGameState("question_end");
-            }
+          onClick={() => {
+            // Tell host page to run its full revealAnswer() logic (scoring + broadcast)
+            broadcast("reveal_answer_request", {});
           }}
           className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
         >
