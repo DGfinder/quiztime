@@ -477,14 +477,12 @@ export default function PlayPage() {
                       Oops!
                     </h2>
                     <p className="text-ink/60 mb-6">{roomError}</p>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      className="w-full"
-                      onClick={() => router.push("/")}
+                    <button
+                      className="text-sm text-ink/40 underline"
+                      onClick={() => window.close()}
                     >
-                      Back to Home
-                    </Button>
+                      Close tab
+                    </button>
                   </div>
                 </div>
               ) : (
