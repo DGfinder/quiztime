@@ -255,8 +255,8 @@ export default function PlayPage() {
           }
 
           if (p.state === "question_end") {
-            // Timer ended. Player stays in answered/question phase.
-            // They'll see the reveal when host broadcasts answer_revealed.
+            // Timer ended — ensure timer shows 0 on player's screen
+            setTimeRemaining(0);
           }
 
           if (p.state === "leaderboard") {

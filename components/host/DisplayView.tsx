@@ -534,7 +534,18 @@ export default function DisplayView({
         </div>
 
         <div className="flex-shrink-0 px-0 pb-0">
-          <div className="flex justify-end px-12 pb-4">
+          <div className="flex justify-between items-center px-12 pb-4">
+            <motion.span
+              key={timeRemaining}
+              initial={{ scale: 1.2 }}
+              animate={{ scale: 1 }}
+              className={`font-black text-4xl tabular-nums ${
+                timeRemaining <= 5 ? 'text-[#FF6B6B]' : 'text-[#FAFAF7]/70'
+              }`}
+            >
+              {timeRemaining}
+              <span className="text-lg font-bold ml-1 opacity-50">s</span>
+            </motion.span>
             <motion.span
               key={answeredCount}
               initial={{ scale: 1.3 }}
@@ -545,9 +556,9 @@ export default function DisplayView({
             </motion.span>
           </div>
 
-          <div className="w-full h-3 bg-white/5">
+          <div className="w-full h-2 bg-white/10">
             <motion.div
-              className="h-full bg-[#FF6B6B]"
+              className={`h-full ${timeRemaining <= 5 ? 'bg-[#FF6B6B]' : 'bg-[#FFB95F]'}`}
               style={{
                 width: `${timerFraction * 100}%`,
                 transition: 'width 900ms linear',

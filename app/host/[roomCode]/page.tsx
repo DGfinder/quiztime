@@ -461,7 +461,6 @@ export default function HostControlPanel() {
 
   const revealAnswer = async () => {
     if (!currentQuestion) return;
-    revealAnswerRef.current = revealAnswer;
 
     // Build playerResults from currentAnswers (already scored)
     const playerResults: Record<string, { isCorrect: boolean; pointsEarned: number }> = {};
@@ -490,6 +489,7 @@ export default function HostControlPanel() {
 
     setAnswerRevealed(true);
   };
+  revealAnswerRef.current = revealAnswer;
 
   const showLeaderboard = async () => {
     // Fetch fresh scores from DB before showing leaderboard
@@ -536,7 +536,6 @@ export default function HostControlPanel() {
 
   const finishGame = async () => {
     setGameState("finished");
-    finishGameRef.current = finishGame;
 
     // Compute per-player average time (correct answers only)
     const avgTimeMap: Record<string, number> = {};
@@ -644,6 +643,8 @@ export default function HostControlPanel() {
       }
     }
   };
+
+  finishGameRef.current = finishGame;
 
   // ---------- ANSWER DISTRIBUTION DATA ----------
 
