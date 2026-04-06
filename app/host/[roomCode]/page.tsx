@@ -39,11 +39,7 @@ import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
 import DisplayView from "@/components/host/DisplayView";
-
-const emojiAvatars = [
-  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
-  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
-];
+import RacerAvatar from "@/components/shared/RacerAvatar";
 
 export default function HostControlPanel() {
   const params = useParams();
@@ -461,7 +457,6 @@ export default function HostControlPanel() {
 
   const revealAnswer = async () => {
     if (!currentQuestion) return;
-    revealAnswerRef.current = revealAnswer;
 
     // Build playerResults from currentAnswers (already scored)
     const playerResults: Record<string, { isCorrect: boolean; pointsEarned: number }> = {};
@@ -482,14 +477,21 @@ export default function HostControlPanel() {
       }
     }
 
+    // Find next question's image URL for preloading on clients
+    const nextIdx = currentQuestionIndexRef.current + 1;
+    const nextQ = questionsRef.current[nextIdx];
+    const nextImageUrl = nextQ?.image_url || null;
+
     broadcast("answer_revealed", {
       questionId: currentQuestion.id,
       correctAnswer: currentQuestion.correct_answer,
       playerResults,
+      nextImageUrl,
     });
 
     setAnswerRevealed(true);
   };
+  revealAnswerRef.current = revealAnswer;
 
   const showLeaderboard = async () => {
     // Fetch fresh scores from DB before showing leaderboard
@@ -536,7 +538,6 @@ export default function HostControlPanel() {
 
   const finishGame = async () => {
     setGameState("finished");
-    finishGameRef.current = finishGame;
 
     // Compute per-player average time (correct answers only)
     const avgTimeMap: Record<string, number> = {};
@@ -645,6 +646,8 @@ export default function HostControlPanel() {
     }
   };
 
+  finishGameRef.current = finishGame;
+
   // ---------- ANSWER DISTRIBUTION DATA ----------
 
   const answerDistribution = useMemo(() => {
@@ -726,6 +729,7 @@ export default function HostControlPanel() {
           leaderboard={leaderboard}
           currentAnswers={currentAnswers}
           answerRevealed={answerRevealed}
+          scoringComplete={scoringComplete}
           questionNumber={currentQuestionIndex + 1}
           totalQuestions={questions.length}
           roomCode={roomCode}
@@ -733,6 +737,14 @@ export default function HostControlPanel() {
           onShowLeaderboard={showLeaderboard}
           onNextQuestion={nextQuestion}
           onFinishGame={finishGame}
+          onEndTimerEarly={() => {
+            setTimerRunning(false);
+            setGameState("question_end");
+            broadcast("game_state_change", {
+              state: "question_end",
+              current_question_index: currentQuestionIndex,
+            });
+          }}
         />
         <button
           onClick={() => setViewMode('host')}
@@ -1229,9 +1241,7 @@ export default function HostControlPanel() {
                   >
                     {entry.rank}
                   </span>
-                  <span className="text-2xl">
-                    {emojiAvatars[idx % emojiAvatars.length]}
-                  </span>
+                  <RacerAvatar index={idx} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-primary font-bold truncate">
                       {entry.player_name}

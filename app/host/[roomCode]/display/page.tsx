@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useRoomChannel, usePlayersSubscription } from "@/lib/realtime";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
+import RacerAvatar from "@/components/shared/RacerAvatar";
 import EndGame from "@/components/EndGame";
 import type {
   Room,
@@ -15,17 +16,12 @@ import type {
   LeaderboardEntry,
 } from "@/types/quiz";
 
-const emojiAvatars = [
-  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
-  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
-];
-
-function getPlayerEmoji(players: Player[], playerId: string): string {
+function getPlayerIndex(players: Player[], playerId: string): number {
   const sorted = [...players].sort(
     (a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
   );
   const idx = sorted.findIndex((p) => p.id === playerId);
-  return emojiAvatars[(idx >= 0 ? idx : 0) % emojiAvatars.length];
+  return idx >= 0 ? idx : 0;
 }
 
 interface AnswerDistribution {
@@ -495,9 +491,7 @@ export default function DisplayScreen() {
                   }}
                   className="bg-white/10 backdrop-blur px-5 py-3 rounded-xl flex items-center gap-3"
                 >
-                  <span className="text-2xl">
-                    {emojiAvatars[idx % emojiAvatars.length]}
-                  </span>
+                  <RacerAvatar index={idx} size={32} />
                   <span className="font-bold text-lg truncate max-w-[140px]">
                     {player.name}
                   </span>
@@ -565,9 +559,7 @@ export default function DisplayScreen() {
               <span className="text-3xl font-black w-12 text-center text-[#FAFAF7]/60">
                 {entry.rank}
               </span>
-              <span className="text-3xl">
-                {getPlayerEmoji(players, entry.player_id)}
-              </span>
+              <RacerAvatar index={getPlayerIndex(players, entry.player_id)} size={36} />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-xl truncate">{entry.player_name}</p>
               </div>

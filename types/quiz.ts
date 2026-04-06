@@ -121,6 +121,7 @@ export interface AnswerRevealPayload {
   questionId: string;
   correctAnswer: string;
   playerResults: Record<string, PlayerResult>;
+  nextImageUrl?: string | null;
 }
 
 // Form types for creating quizzes

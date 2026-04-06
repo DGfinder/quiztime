@@ -4,12 +4,8 @@ import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GameState, Question, Player, LeaderboardEntry, Answer } from '@/types/quiz';
 import QRCodeDisplay from '@/components/shared/QRCodeDisplay';
+import RacerAvatar from '@/components/shared/RacerAvatar';
 import EndGame from '@/components/EndGame';
-
-const emojiAvatars = [
-  '🦊','🍕','🚀','🥑','🎮','🐘','🦋','🌮',
-  '🎯','🦄','🐙','🎸','🌊','🔥','🎪','🐬',
-];
 
 interface AnswerDistItem {
   label: string;
@@ -27,6 +23,7 @@ interface DisplayViewProps {
   leaderboard: LeaderboardEntry[];
   currentAnswers: Answer[];
   answerRevealed: boolean;
+  scoringComplete: boolean;
   questionNumber: number;
   totalQuestions: number;
   roomCode: string;
@@ -34,14 +31,15 @@ interface DisplayViewProps {
   onShowLeaderboard: () => void;
   onNextQuestion: () => void;
   onFinishGame: () => void;
+  onEndTimerEarly?: () => void;
 }
 
-function getPlayerEmoji(players: Player[], playerId: string): string {
+function getPlayerIndex(players: Player[], playerId: string): number {
   const sorted = [...players].sort(
     (a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
   );
   const idx = sorted.findIndex((p) => p.id === playerId);
-  return emojiAvatars[(idx >= 0 ? idx : 0) % emojiAvatars.length];
+  return idx >= 0 ? idx : 0;
 }
 
 export default function DisplayView({
@@ -53,6 +51,7 @@ export default function DisplayView({
   leaderboard,
   currentAnswers,
   answerRevealed,
+  scoringComplete,
   questionNumber,
   totalQuestions,
   roomCode,
@@ -60,6 +59,7 @@ export default function DisplayView({
   onShowLeaderboard,
   onNextQuestion,
   onFinishGame,
+  onEndTimerEarly,
 }: DisplayViewProps) {
 
   // Compute answer distribution from currentAnswers + currentQuestion
@@ -162,15 +162,32 @@ export default function DisplayView({
     : `https://quiztime-alpha.vercel.app/play/${roomCode}`;
 
   // ---------- Toolbar ----------
+  const toolbarBtnBase = "px-4 py-1.5 rounded-xl text-white text-sm font-bold active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none";
+
   const toolbar = (
     <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 shadow-xl">
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
-      {/* Reveal */}
-      {!answerRevealed && (gameState === 'question_start' || gameState === 'question_end') && currentQuestion && (
+      {/* End Timer Early — only while timer is actively running */}
+      {gameState === 'question_start' && currentQuestion && onEndTimerEarly && (
+        <button
+          onClick={onEndTimerEarly}
+          className={`${toolbarBtnBase} bg-white/20 hover:bg-white/30`}
+        >
+          End Timer
+        </button>
+      )}
+
+      {/* Scoring in progress indicator */}
+      {gameState === 'question_end' && !scoringComplete && !answerRevealed && (
+        <span className="text-white/40 text-xs font-medium animate-pulse">Scoring...</span>
+      )}
+
+      {/* Reveal — only after timer ends AND scoring is complete */}
+      {gameState === 'question_end' && scoringComplete && !answerRevealed && currentQuestion && (
         <button
           onClick={onReveal}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#FF6B6B] hover:opacity-90`}
         >
           Reveal
         </button>
@@ -180,7 +197,7 @@ export default function DisplayView({
       {answerRevealed && gameState === 'question_end' && (
         <button
           onClick={onShowLeaderboard}
-          className="px-4 py-1.5 rounded-xl bg-[#8594CD] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#8594CD] hover:opacity-90`}
         >
           Leaderboard
         </button>
@@ -190,7 +207,7 @@ export default function DisplayView({
       {(answerRevealed || gameState === 'leaderboard') && questionNumber < totalQuestions && (
         <button
           onClick={onNextQuestion}
-          className="px-4 py-1.5 rounded-xl bg-white/20 text-white text-sm font-bold hover:bg-white/30 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-white/20 hover:bg-white/30`}
         >
           Next →
         </button>
@@ -200,9 +217,9 @@ export default function DisplayView({
       {(answerRevealed || gameState === 'leaderboard') && questionNumber >= totalQuestions && (
         <button
           onClick={onFinishGame}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#FF6B6B] hover:opacity-90`}
         >
-          Finish 🏆
+          Finish
         </button>
       )}
 
@@ -280,9 +297,7 @@ export default function DisplayView({
                   }}
                   className="bg-white/10 backdrop-blur px-5 py-3 rounded-xl flex items-center gap-3"
                 >
-                  <span className="text-2xl">
-                    {emojiAvatars[idx % emojiAvatars.length]}
-                  </span>
+                  <RacerAvatar index={idx} size={32} />
                   <span className="font-bold text-lg truncate max-w-[140px]">
                     {player.name}
                   </span>
@@ -352,9 +367,7 @@ export default function DisplayView({
               <span className="text-3xl font-black w-12 text-center text-[#FAFAF7]/60">
                 {entry.rank}
               </span>
-              <span className="text-3xl">
-                {getPlayerEmoji(players, entry.player_id)}
-              </span>
+              <RacerAvatar index={getPlayerIndex(players, entry.player_id)} size={36} />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-xl truncate">{entry.player_name}</p>
               </div>
@@ -534,7 +547,18 @@ export default function DisplayView({
         </div>
 
         <div className="flex-shrink-0 px-0 pb-0">
-          <div className="flex justify-end px-12 pb-4">
+          <div className="flex justify-between items-center px-12 pb-4">
+            <motion.span
+              key={timeRemaining}
+              initial={{ scale: 1.2 }}
+              animate={{ scale: 1 }}
+              className={`font-black text-4xl tabular-nums ${
+                timeRemaining <= 5 ? 'text-[#FF6B6B]' : 'text-[#FAFAF7]/70'
+              }`}
+            >
+              {timeRemaining}
+              <span className="text-lg font-bold ml-1 opacity-50">s</span>
+            </motion.span>
             <motion.span
               key={answeredCount}
               initial={{ scale: 1.3 }}
@@ -545,9 +569,9 @@ export default function DisplayView({
             </motion.span>
           </div>
 
-          <div className="w-full h-3 bg-white/5">
+          <div className="w-full h-2 bg-white/10">
             <motion.div
-              className="h-full bg-[#FF6B6B]"
+              className={`h-full ${timeRemaining <= 5 ? 'bg-[#FF6B6B]' : 'bg-[#FFB95F]'}`}
               style={{
                 width: `${timerFraction * 100}%`,
                 transition: 'width 900ms linear',

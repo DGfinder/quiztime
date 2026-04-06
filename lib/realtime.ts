@@ -169,6 +169,7 @@ export function useTimer(
         const next = prev - 1;
         if (next <= 0) {
           if (intervalRef.current) clearInterval(intervalRef.current);
+          onTickRef.current?.(0);
           onCompleteRef.current?.();
           return 0;
         }

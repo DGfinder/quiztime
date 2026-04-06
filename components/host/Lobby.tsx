@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
+import RacerAvatar from "@/components/shared/RacerAvatar";
 
 interface LobbyPlayer {
   name: string;
@@ -20,11 +21,6 @@ interface LobbyProps {
   canStart: boolean;
   displayUrl?: string;
 }
-
-const emojiAvatars = [
-  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
-  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
-];
 
 export default function Lobby({
   players,
@@ -175,9 +171,7 @@ export default function Lobby({
                   }}
                   className="bg-surface-container-lowest p-4 rounded-lg flex items-center gap-3 shadow-[0px_10px_20px_rgba(27,43,94,0.03)] border-b-2 border-transparent hover:border-primary transition-all relative"
                 >
-                  <div className="text-2xl">
-                    {emojiAvatars[idx % emojiAvatars.length]}
-                  </div>
+                  <RacerAvatar index={idx} size={32} />
                   <span className="font-bold text-primary truncate">
                     {player.name}
                   </span>
