@@ -307,6 +307,12 @@ export default function PlayPage() {
           setRevealCorrectAnswer(p.correctAnswer);
           setPhase("answer_revealed");
 
+          // Preload next question's image so it's cached before question starts
+          if (p.nextImageUrl) {
+            const img = new window.Image();
+            img.src = p.nextImageUrl;
+          }
+
           // For blurred image questions, use phased reveal
           setCurrentQuestion((prev) => {
             if (prev?.is_image_blurred) {
@@ -561,7 +567,9 @@ export default function PlayPage() {
           )}
 
           {/* ── Question Phase ───────────────────── */}
-          {phase === "question" && currentQuestion && (
+          {phase === "question" && currentQuestion && (() => {
+            const waitingForImage = !!currentQuestion.image_url && !imageLoaded;
+            return (
             <AnimatedContainer
               key={`question-${currentQuestion.id}`}
               className="flex-1 flex flex-col gap-5"
@@ -583,15 +591,27 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Timer */}
-              <TimerBar timeRemaining={timeRemaining} timeLimit={timeLimit} />
+              {/* Timer — show full bar while image loading, real value once ready */}
+              <TimerBar
+                timeRemaining={waitingForImage ? timeLimit : timeRemaining}
+                timeLimit={timeLimit}
+              />
 
               {/* Question text */}
               <div className="bg-white rounded-3xl shadow-md p-6">
                 {currentQuestion.image_url && (
                   <div className="mb-4 rounded-2xl overflow-hidden relative aspect-video">
                     {!imageLoaded && (
-                      <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse" />
+                      <div className="absolute inset-0 bg-gray-200 rounded-xl animate-pulse flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-2">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-8 h-8 border-3 border-navy/20 border-t-navy rounded-full"
+                          />
+                          <span className="text-xs font-bold text-navy/40">Loading image...</span>
+                        </div>
+                      </div>
                     )}
                     <Image
                       src={currentQuestion.image_url}
@@ -629,16 +649,17 @@ export default function PlayPage() {
                 </div>
               )}
 
-              {/* Answer buttons */}
-              <div className="mt-auto pb-2">
+              {/* Answer buttons — hidden until image is ready */}
+              <div className={`mt-auto pb-2 ${waitingForImage ? 'opacity-0 pointer-events-none' : ''}`}>
                 <AnswerButtons
                   question={currentQuestion}
                   onAnswer={handleAnswer}
-                  disabled={false}
+                  disabled={waitingForImage}
                 />
               </div>
             </AnimatedContainer>
-          )}
+            );
+          })()}
 
           {/* ── Answered / Locked in ─────────────── */}
           {phase === "answered" && currentQuestion && (

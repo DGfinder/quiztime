@@ -481,10 +481,16 @@ export default function HostControlPanel() {
       }
     }
 
+    // Find next question's image URL for preloading on clients
+    const nextIdx = currentQuestionIndexRef.current + 1;
+    const nextQ = questionsRef.current[nextIdx];
+    const nextImageUrl = nextQ?.image_url || null;
+
     broadcast("answer_revealed", {
       questionId: currentQuestion.id,
       correctAnswer: currentQuestion.correct_answer,
       playerResults,
+      nextImageUrl,
     });
 
     setAnswerRevealed(true);
