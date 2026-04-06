@@ -39,11 +39,7 @@ import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
 import DisplayView from "@/components/host/DisplayView";
-
-const emojiAvatars = [
-  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
-  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
-];
+import RacerAvatar from "@/components/shared/RacerAvatar";
 
 export default function HostControlPanel() {
   const params = useParams();
@@ -1245,9 +1241,7 @@ export default function HostControlPanel() {
                   >
                     {entry.rank}
                   </span>
-                  <span className="text-2xl">
-                    {emojiAvatars[idx % emojiAvatars.length]}
-                  </span>
+                  <RacerAvatar index={idx} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-primary font-bold truncate">
                       {entry.player_name}

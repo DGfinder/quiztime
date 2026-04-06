@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion } from "@/lib/useReducedMotion";
+import RacerAvatar from "@/components/shared/RacerAvatar";
 import type { LeaderboardEntry } from "@/types/quiz";
 
 interface EndGameProps {
@@ -14,11 +15,6 @@ interface EndGameProps {
   onNewQuiz?: () => void;
   onDownloadResults?: () => void;
 }
-
-const emojiAvatars = [
-  "🦊", "🍕", "🚀", "🥑", "🎮", "🐘", "🦋", "🌮",
-  "🎯", "🦄", "🐙", "🎸", "🌊", "🔥", "🎪", "🐬",
-];
 
 function AnimatedScore({ target, duration = 800 }: { target: number; duration?: number }) {
   const [value, setValue] = useState(0);
@@ -197,16 +193,11 @@ export default function EndGame({
               </span>
 
               {/* Avatar */}
-              <div
-                className={`rounded-full flex items-center justify-center mb-2 ${
-                  isFirst ? "w-16 h-16 text-3xl" : "w-12 h-12 text-2xl"
-                }`}
-                style={{ backgroundColor: `${accent}20` }}
-              >
-                {emojiAvatars[
-                  sorted.findIndex((p) => p.player_id === player.player_id) %
-                    emojiAvatars.length
-                ]}
+              <div className="mb-2">
+                <RacerAvatar
+                  index={sorted.findIndex((p) => p.player_id === player.player_id)}
+                  size={isFirst ? 64 : 48}
+                />
               </div>
 
               {/* Player name */}
@@ -276,9 +267,7 @@ export default function EndGame({
               </span>
 
               {/* Avatar */}
-              <span className="text-xl">
-                {emojiAvatars[idx % emojiAvatars.length]}
-              </span>
+              <RacerAvatar index={idx} size={28} />
 
               {/* Name */}
               <div className="flex-1 min-w-0">
