@@ -27,6 +27,7 @@ interface DisplayViewProps {
   leaderboard: LeaderboardEntry[];
   currentAnswers: Answer[];
   answerRevealed: boolean;
+  scoringComplete: boolean;
   questionNumber: number;
   totalQuestions: number;
   roomCode: string;
@@ -34,6 +35,7 @@ interface DisplayViewProps {
   onShowLeaderboard: () => void;
   onNextQuestion: () => void;
   onFinishGame: () => void;
+  onEndTimerEarly?: () => void;
 }
 
 function getPlayerEmoji(players: Player[], playerId: string): string {
@@ -53,6 +55,7 @@ export default function DisplayView({
   leaderboard,
   currentAnswers,
   answerRevealed,
+  scoringComplete,
   questionNumber,
   totalQuestions,
   roomCode,
@@ -60,6 +63,7 @@ export default function DisplayView({
   onShowLeaderboard,
   onNextQuestion,
   onFinishGame,
+  onEndTimerEarly,
 }: DisplayViewProps) {
 
   // Compute answer distribution from currentAnswers + currentQuestion
@@ -162,15 +166,32 @@ export default function DisplayView({
     : `https://quiztime-alpha.vercel.app/play/${roomCode}`;
 
   // ---------- Toolbar ----------
+  const toolbarBtnBase = "px-4 py-1.5 rounded-xl text-white text-sm font-bold active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none";
+
   const toolbar = (
     <div className="fixed bottom-6 left-6 z-50 flex items-center gap-2 bg-black/70 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 shadow-xl">
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
-      {/* Reveal */}
-      {!answerRevealed && (gameState === 'question_start' || gameState === 'question_end') && currentQuestion && (
+      {/* End Timer Early — only while timer is actively running */}
+      {gameState === 'question_start' && currentQuestion && onEndTimerEarly && (
+        <button
+          onClick={onEndTimerEarly}
+          className={`${toolbarBtnBase} bg-white/20 hover:bg-white/30`}
+        >
+          End Timer
+        </button>
+      )}
+
+      {/* Scoring in progress indicator */}
+      {gameState === 'question_end' && !scoringComplete && !answerRevealed && (
+        <span className="text-white/40 text-xs font-medium animate-pulse">Scoring...</span>
+      )}
+
+      {/* Reveal — only after timer ends AND scoring is complete */}
+      {gameState === 'question_end' && scoringComplete && !answerRevealed && currentQuestion && (
         <button
           onClick={onReveal}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#FF6B6B] hover:opacity-90`}
         >
           Reveal
         </button>
@@ -180,7 +201,7 @@ export default function DisplayView({
       {answerRevealed && gameState === 'question_end' && (
         <button
           onClick={onShowLeaderboard}
-          className="px-4 py-1.5 rounded-xl bg-[#8594CD] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#8594CD] hover:opacity-90`}
         >
           Leaderboard
         </button>
@@ -190,7 +211,7 @@ export default function DisplayView({
       {(answerRevealed || gameState === 'leaderboard') && questionNumber < totalQuestions && (
         <button
           onClick={onNextQuestion}
-          className="px-4 py-1.5 rounded-xl bg-white/20 text-white text-sm font-bold hover:bg-white/30 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-white/20 hover:bg-white/30`}
         >
           Next →
         </button>
@@ -200,9 +221,9 @@ export default function DisplayView({
       {(answerRevealed || gameState === 'leaderboard') && questionNumber >= totalQuestions && (
         <button
           onClick={onFinishGame}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className={`${toolbarBtnBase} bg-[#FF6B6B] hover:opacity-90`}
         >
-          Finish 🏆
+          Finish
         </button>
       )}
 

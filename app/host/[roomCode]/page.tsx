@@ -733,6 +733,7 @@ export default function HostControlPanel() {
           leaderboard={leaderboard}
           currentAnswers={currentAnswers}
           answerRevealed={answerRevealed}
+          scoringComplete={scoringComplete}
           questionNumber={currentQuestionIndex + 1}
           totalQuestions={questions.length}
           roomCode={roomCode}
@@ -740,6 +741,14 @@ export default function HostControlPanel() {
           onShowLeaderboard={showLeaderboard}
           onNextQuestion={nextQuestion}
           onFinishGame={finishGame}
+          onEndTimerEarly={() => {
+            setTimerRunning(false);
+            setGameState("question_end");
+            broadcast("game_state_change", {
+              state: "question_end",
+              current_question_index: currentQuestionIndex,
+            });
+          }}
         />
         <button
           onClick={() => setViewMode('host')}
