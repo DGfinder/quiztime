@@ -6,11 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { generateHorseName } from "@/lib/horses";
+import { useServerClock, useDeadlineCountdown } from "@/lib/realtime";
 import type {
   Question,
   GameStatePayload,
-  QuestionRevealPayload,
-  TimerTickPayload,
+  QuestionScheduledPayload,
   LeaderboardUpdatePayload,
   LeaderboardEntry,
   AnswerRevealPayload,
@@ -95,9 +95,11 @@ export default function PlayPage() {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [timeLimit, setTimeLimit] = useState(0);
-  const questionStartRef = useRef<number>(0);
+  // Deadline-based timing: server-time instants the host broadcasts once per question.
+  const [activeStartsAt, setActiveStartsAt] = useState<number | null>(null);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [preloadEnded, setPreloadEnded] = useState(false);
+  const timeLimit = currentQuestion?.time_limit ?? 0;
 
   // Answer tracking
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -126,6 +128,21 @@ export default function PlayPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
+  // Shared server clock so the player counts to the same deadline as the host,
+  // regardless of how slow the question media took to load on this device.
+  const { serverNow } = useServerClock();
+  const serverNowRef = useRef(serverNow);
+  serverNowRef.current = serverNow;
+  const activeStartsAtRef = useRef<number | null>(null);
+  activeStartsAtRef.current = activeStartsAt;
+
+  // The countdown only ticks once preload is over; before that the bar shows full.
+  const liveTimeRemaining = useDeadlineCountdown(
+    preloadEnded ? endsAt : null,
+    serverNow
+  );
+  const timeRemaining = preloadEnded ? liveTimeRemaining : timeLimit;
+
   // Progressive blur: reduce blur as timer ticks down
   useEffect(() => {
     if (!currentQuestion?.is_image_blurred) {
@@ -133,16 +150,26 @@ export default function PlayPage() {
       return;
     }
     if (phase === "answer_revealed") {
-      // Reveal — animate to 0 via CSS transition
       setBlurAmount(0);
       return;
     }
     if (phase === "question" || phase === "answered") {
       const fraction = timeLimit > 0 ? timeRemaining / timeLimit : 1;
-      // Start at 16px, reduce to 6px by end of timer
       setBlurAmount(Math.max(6, 16 * fraction));
     }
   }, [currentQuestion?.is_image_blurred, phase, timeRemaining, timeLimit]);
+
+  // Flip preload→active locally when the activeStartsAt instant arrives.
+  useEffect(() => {
+    if (preloadEnded || activeStartsAt == null) return;
+    const ms = activeStartsAt - serverNow();
+    if (ms <= 0) {
+      setPreloadEnded(true);
+      return;
+    }
+    const id = setTimeout(() => setPreloadEnded(true), ms);
+    return () => clearTimeout(id);
+  }, [preloadEnded, activeStartsAt, serverNow]);
 
   // Channel ref to avoid re-subscribing
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -209,8 +236,11 @@ export default function PlayPage() {
                 setCurrentQuestion(safeQ);
                 setQuestionNumber(idx + 1);
                 setTotalQuestions(questions.length);
-                setTimeLimit(q.time_limit);
-                setTimeRemaining(0);
+                // Late joiner missed the schedule broadcast — show 0 until the
+                // host moves on. They'll catch up on the next question_scheduled.
+                setActiveStartsAt(0);
+                setEndsAt(0);
+                setPreloadEnded(true);
                 setPhase('question');
                 return;
               }
@@ -243,22 +273,6 @@ export default function PlayPage() {
         .on("broadcast", { event: "game_state_change" }, ({ payload }) => {
           const p = payload as GameStatePayload;
 
-          if (p.state === "question_start") {
-            // Reset answer state — question will arrive via question_reveal
-            setSelectedAnswer(null);
-            setTimeTakenMs(0);
-            setRevealIsCorrect(false);
-            setRevealPoints(0);
-            setRevealCorrectAnswer("");
-            setRevealIsJoker(false);
-            setRevealPhase(null);
-          }
-
-          if (p.state === "question_end") {
-            // Timer ended — ensure timer shows 0 on player's screen
-            setTimeRemaining(0);
-          }
-
           if (p.state === "leaderboard") {
             setPhase("leaderboard");
           }
@@ -273,24 +287,35 @@ export default function PlayPage() {
             setPhase("lobby");
           }
         })
-        .on("broadcast", { event: "question_reveal" }, ({ payload }) => {
-          const p = payload as QuestionRevealPayload;
+        .on("broadcast", { event: "question_scheduled" }, ({ payload }) => {
+          const p = payload as QuestionScheduledPayload;
           const safeQuestion = { ...p.question };
           delete (safeQuestion as Partial<Question>).correct_answer;
-          setCurrentQuestion(safeQuestion as Question);
-          setImageLoaded(false);
+
+          // Clear any leftover "Answer locked in!" toast so it doesn't sit on
+          // top of the next question's answer buttons on mobile.
+          toast.dismiss();
+
+          setCurrentQuestion((prev) => {
+            // Re-broadcast for the same question (e.g. host pressed "End Early")
+            // is just a deadline update — keep the answer state intact.
+            if (prev?.id === safeQuestion.id) return prev;
+            setImageLoaded(false);
+            setSelectedAnswer(null);
+            setTimeTakenMs(0);
+            setRevealIsCorrect(false);
+            setRevealPoints(0);
+            setRevealCorrectAnswer("");
+            setRevealIsJoker(false);
+            setRevealPhase(null);
+            return safeQuestion as Question;
+          });
           setQuestionNumber(p.question_number);
           setTotalQuestions(p.total_questions);
-          setTimeRemaining(safeQuestion.time_limit);
-          setTimeLimit(safeQuestion.time_limit);
-          questionStartRef.current = Date.now();
-          setSelectedAnswer(null);
+          setActiveStartsAt(p.active_starts_at);
+          setEndsAt(p.ends_at);
+          setPreloadEnded(serverNowRef.current() >= p.active_starts_at);
           setPhase("question");
-        })
-        .on("broadcast", { event: "timer_tick" }, ({ payload }) => {
-          const p = payload as TimerTickPayload;
-          setTimeRemaining(p.time_remaining);
-          setTimeLimit(p.time_limit);
         })
         .on("broadcast", { event: "answer_revealed" }, ({ payload }) => {
           const p = payload as AnswerRevealPayload;
@@ -422,12 +447,16 @@ export default function PlayPage() {
   async function handleAnswer(answer: string) {
     if (!currentQuestion || !playerId) return;
 
-    const taken = Date.now() - questionStartRef.current;
+    // Anchor time_taken_ms to the shared deadline rather than a per-client
+    // ref. That way scoring is fair across devices and immune to clock drift,
+    // and slow-loading players aren't penalised for their own image fetch.
+    const startedAt = activeStartsAtRef.current ?? serverNowRef.current();
+    const taken = Math.max(0, serverNowRef.current() - startedAt);
     setSelectedAnswer(answer);
     setTimeTakenMs(taken);
     setPhase("answered");
 
-    toast(`Answer locked in! ✅`, { duration: 2000 });
+    toast(`Answer locked in! ✅`, { duration: 1200 });
 
     await supabase.from("qt_answers").insert({
       question_id: currentQuestion.id,
@@ -568,12 +597,34 @@ export default function PlayPage() {
 
           {/* ── Question Phase ───────────────────── */}
           {phase === "question" && currentQuestion && (() => {
-            const waitingForImage = !!currentQuestion.image_url && !imageLoaded;
+            const isPreload = !preloadEnded;
             return (
             <AnimatedContainer
               key={`question-${currentQuestion.id}`}
-              className="flex-1 flex flex-col gap-5"
+              className="flex-1 flex flex-col gap-5 relative"
             >
+              {/* "Get ready" splash during the preload window. The question UI is
+                  already mounted underneath, so the image fetch happens here. */}
+              <AnimatePresence>
+                {isPreload && (
+                  <motion.div
+                    key="preload-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-cream/95 backdrop-blur-sm rounded-3xl"
+                  >
+                    <span className="text-xs font-bold text-navy/40 uppercase tracking-widest mb-2">
+                      Get ready
+                    </span>
+                    <span className="text-5xl font-extrabold text-navy tracking-tight">
+                      Q{questionNumber}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Question counter */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-navy/60">
@@ -591,11 +642,7 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Timer — show full bar while image loading, real value once ready */}
-              <TimerBar
-                timeRemaining={waitingForImage ? timeLimit : timeRemaining}
-                timeLimit={timeLimit}
-              />
+              <TimerBar timeRemaining={timeRemaining} timeLimit={timeLimit} />
 
               {/* Question text */}
               <div className="bg-white rounded-3xl shadow-md p-6">
@@ -649,12 +696,12 @@ export default function PlayPage() {
                 </div>
               )}
 
-              {/* Answer buttons — hidden until image is ready */}
-              <div className={`mt-auto pb-2 ${waitingForImage ? 'opacity-0 pointer-events-none' : ''}`}>
+              {/* Answer buttons — disabled during the preload splash. */}
+              <div className={`mt-auto pb-2 ${isPreload ? 'opacity-40 pointer-events-none' : ''}`}>
                 <AnswerButtons
                   question={currentQuestion}
                   onAnswer={handleAnswer}
-                  disabled={waitingForImage}
+                  disabled={isPreload}
                 />
               </div>
             </AnimatedContainer>

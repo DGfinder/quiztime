@@ -11,10 +11,16 @@ export type RoomStatus = "lobby" | "active" | "finished";
 
 export type GameState =
   | "lobby"
-  | "question_start"
+  | "question_preload"
+  | "question_active"
   | "question_end"
   | "leaderboard"
   | "finished";
+
+// Wall-clock duration of the "Get ready" splash before the timer starts.
+export const PRELOAD_MS = 3000;
+// Small lead-in so all clients receive the broadcast before preload begins.
+export const SCHEDULE_LEAD_MS = 250;
 
 export interface Room {
   id: string;
@@ -81,21 +87,20 @@ export interface GameStatePayload {
   current_question_index?: number;
 }
 
-export interface QuestionRevealPayload {
+export interface QuestionScheduledPayload {
   question: Question;
   question_number: number;
   total_questions: number;
+  // All in server-time milliseconds.
+  preload_starts_at: number;
+  active_starts_at: number;
+  ends_at: number;
 }
 
 export interface AnswerSubmittedPayload {
   player_id: string;
   player_name: string;
   question_id: string;
-}
-
-export interface TimerTickPayload {
-  time_remaining: number;
-  time_limit: number;
 }
 
 export interface LeaderboardEntry {

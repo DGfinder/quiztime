@@ -169,7 +169,7 @@ export default function DisplayView({
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
       {/* End Timer Early — only while timer is actively running */}
-      {gameState === 'question_start' && currentQuestion && onEndTimerEarly && (
+      {gameState === 'question_active' && currentQuestion && onEndTimerEarly && (
         <button
           onClick={onEndTimerEarly}
           className={`${toolbarBtnBase} bg-white/20 hover:bg-white/30`}
@@ -392,7 +392,9 @@ export default function DisplayView({
 
   // ---------- ANSWER REVEALED ----------
   if (
-    (gameState === 'question_end' || gameState === 'question_start') &&
+    (gameState === 'question_end' ||
+      gameState === 'question_active' ||
+      gameState === 'question_preload') &&
     answerRevealed &&
     currentQuestion
   ) {
@@ -479,17 +481,42 @@ export default function DisplayView({
     );
   }
 
-  // ---------- QUESTION ACTIVE ----------
+  // ---------- QUESTION PRELOAD / ACTIVE / END ----------
   if (
-    (gameState === 'question_start' || gameState === 'question_end') &&
+    (gameState === 'question_preload' ||
+      gameState === 'question_active' ||
+      gameState === 'question_end') &&
     currentQuestion
   ) {
     const timerFraction = timeLimit > 0 ? timeRemaining / timeLimit : 0;
     const isTimerDone = gameState === 'question_end' || timeRemaining === 0;
+    const isActiveOrLater = gameState === 'question_active' || gameState === 'question_end';
 
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col relative">
         {toolbar}
+
+        {/* "Get ready" splash during preload */}
+        <AnimatePresence>
+          {gameState === 'question_preload' && (
+            <motion.div
+              key="dv-preload"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#021549]"
+            >
+              <span className="text-2xl text-white/40 font-bold uppercase tracking-widest mb-4">
+                Get ready
+              </span>
+              <span className="text-9xl font-extrabold text-white tracking-tight">
+                Q{questionNumber}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="absolute top-8 left-12 z-10">
           <span className="px-4 py-2 rounded-full bg-white/10 text-sm font-bold uppercase tracking-widest">
             Q{questionNumber} of {totalQuestions}
@@ -515,9 +542,9 @@ export default function DisplayView({
                 src={currentQuestion.image_url}
                 alt="Question"
                 className={`max-h-[40vh] object-contain rounded-2xl ${
-                  currentQuestion.is_image_blurred && !answerRevealed && gameState === 'question_start' && timeRemaining > timeLimit * 0.3
+                  currentQuestion.is_image_blurred && !answerRevealed && isActiveOrLater && timeRemaining > timeLimit * 0.3
                     ? 'blur-xl transition-[filter] duration-[3000ms]'
-                    : currentQuestion.is_image_blurred && !answerRevealed && gameState === 'question_start'
+                    : currentQuestion.is_image_blurred && !answerRevealed && isActiveOrLater
                     ? 'blur-sm transition-[filter] duration-[3000ms]'
                     : ''
                 }`}

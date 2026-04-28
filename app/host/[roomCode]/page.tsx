@@ -10,7 +10,8 @@ import {
   useRoomChannel,
   usePlayersSubscription,
   useAnswersSubscription,
-  useTimer,
+  useServerClock,
+  useDeadlineCountdown,
 } from "@/lib/realtime";
 import {
   scoreStandardQuestion,
@@ -28,6 +29,7 @@ import type {
   GameState,
   LeaderboardEntry,
 } from "@/types/quiz";
+import { PRELOAD_MS, SCHEDULE_LEAD_MS } from "@/types/quiz";
 import Image from "next/image";
 import Button from "@/components/shared/Button";
 import AnimatedContainer from "@/components/shared/AnimatedContainer";
@@ -64,7 +66,10 @@ export default function HostControlPanel() {
   // Game state
   const [gameState, setGameState] = useState<GameState>("lobby");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [timerRunning, setTimerRunning] = useState(false);
+  // Deadline-based timing: a single server-time instant the question ends at.
+  // The preload→active transition is driven off `activeStartsAt`.
+  const [activeStartsAt, setActiveStartsAt] = useState<number | null>(null);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [currentAnswers, setCurrentAnswers] = useState<Answer[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -88,8 +93,9 @@ export default function HostControlPanel() {
     [questions, currentQuestionIndex]
   );
 
-  // Realtime channel
+  // Realtime channel + shared server clock so all devices count to the same deadline
   const { broadcast, onBroadcast } = useRoomChannel(roomCode);
+  const { serverNow } = useServerClock();
 
   // Refs so display toolbar can call these before they're defined below
   const nextQuestionRef = useRef<() => void>(() => {});
@@ -105,33 +111,40 @@ export default function HostControlPanel() {
     onBroadcast("reveal_answer_request", () => { void revealAnswerRef.current(); });
   }, [onBroadcast]);
 
-  // Timer
-  const handleTimerTick = useCallback(
-    (remaining: number) => {
-      if (!currentQuestion) return;
-      broadcast("timer_tick", {
-        time_remaining: remaining,
-        time_limit: currentQuestion.time_limit,
+  // Flip preload → active when the activeStartsAt instant arrives.
+  useEffect(() => {
+    if (gameState !== "question_preload" || activeStartsAt == null) return;
+    const ms = activeStartsAt - serverNow();
+    if (ms <= 0) {
+      setGameState("question_active");
+      return;
+    }
+    const id = setTimeout(() => setGameState("question_active"), ms);
+    return () => clearTimeout(id);
+  }, [gameState, activeStartsAt, serverNow]);
+
+  // Drive the host's own countdown off the same shared deadline.
+  // During preload we hide the timer (still shows full bar) by passing null.
+  const liveTimeRemaining = useDeadlineCountdown(
+    gameState === "question_active" ? endsAt : null,
+    serverNow,
+    () => {
+      setGameState("question_end");
+      broadcast("game_state_change", {
+        state: "question_end",
+        current_question_index: currentQuestionIndexRef.current,
       });
-    },
-    [broadcast, currentQuestion]
+    }
   );
 
-  const handleTimerComplete = useCallback(() => {
-    setTimerRunning(false);
-    setGameState("question_end");
-    broadcast("game_state_change", {
-      state: "question_end",
-      current_question_index: currentQuestionIndexRef.current,
-    });
-  }, [broadcast]);
-
-  const { timeRemaining, reset: resetTimer } = useTimer(
-    currentQuestion?.time_limit ?? 15,
-    timerRunning,
-    handleTimerTick,
-    handleTimerComplete
-  );
+  const timeLimit = currentQuestion?.time_limit ?? 15;
+  // Show full bar during preload; freeze at 0 after end.
+  const timeRemaining =
+    gameState === "question_preload"
+      ? timeLimit
+      : gameState === "question_end"
+        ? 0
+        : liveTimeRemaining;
 
   // Progressive blur for host screen
   useEffect(() => {
@@ -143,7 +156,11 @@ export default function HostControlPanel() {
       setHostBlurAmount(0);
       return;
     }
-    if (gameState === "question_start" || gameState === "question_end") {
+    if (
+      gameState === "question_preload" ||
+      gameState === "question_active" ||
+      gameState === "question_end"
+    ) {
       const tl = currentQuestion.time_limit ?? 15;
       const fraction = tl > 0 ? timeRemaining / tl : 1;
       setHostBlurAmount(Math.max(6, 16 * fraction));
@@ -273,9 +290,18 @@ export default function HostControlPanel() {
     setScoringComplete(false);
     setAnswerRevealed(false);
     setHostImageLoaded(false);
-    setGameState("question_start");
-    setTimerRunning(true);
-    resetTimer(question.time_limit);
+
+    // Anchor the question lifecycle to a shared server-time deadline.
+    // Every device computes its own remaining time against `endsAt`, so the
+    // slowest mobile no longer loses seconds while its image is loading.
+    const now = serverNow();
+    const preloadStartsAt = now + SCHEDULE_LEAD_MS;
+    const activeStartsAtMs = preloadStartsAt + PRELOAD_MS;
+    const endsAtMs = activeStartsAtMs + question.time_limit * 1000;
+
+    setActiveStartsAt(activeStartsAtMs);
+    setEndsAt(endsAtMs);
+    setGameState("question_preload");
 
     const safeQuestion: Partial<Question> = {
       id: question.id,
@@ -297,15 +323,13 @@ export default function HostControlPanel() {
       audio_url: question.audio_url,
     };
 
-    broadcast("question_reveal", {
+    broadcast("question_scheduled", {
       question: safeQuestion,
       question_number: index + 1,
       total_questions: questionsRef.current.length,
-    });
-
-    broadcast("game_state_change", {
-      state: "question_start",
-      current_question_index: index,
+      preload_starts_at: preloadStartsAt,
+      active_starts_at: activeStartsAtMs,
+      ends_at: endsAtMs,
     });
 
     // Persist current question index to DB for late-join catch-up
@@ -317,6 +341,29 @@ export default function HostControlPanel() {
       }).eq('id', room.id);
     }
   };
+
+  // End the active question early by collapsing its deadline to "now".
+  // Re-broadcasts question_scheduled so every device's local countdown
+  // hits zero in lockstep — no separate force-end event needed.
+  const endQuestionEarly = useCallback(() => {
+    const question = currentQuestion;
+    if (!question || gameState !== "question_active") return;
+    const now = serverNow();
+    setEndsAt(now);
+    setGameState("question_end");
+    broadcast("question_scheduled", {
+      question,
+      question_number: currentQuestionIndexRef.current + 1,
+      total_questions: questionsRef.current.length,
+      preload_starts_at: now,
+      active_starts_at: now,
+      ends_at: now,
+    });
+    broadcast("game_state_change", {
+      state: "question_end",
+      current_question_index: currentQuestionIndexRef.current,
+    });
+  }, [broadcast, currentQuestion, gameState, serverNow]);
 
   // ---------- SCORING ----------
 
@@ -737,14 +784,7 @@ export default function HostControlPanel() {
           onShowLeaderboard={showLeaderboard}
           onNextQuestion={nextQuestion}
           onFinishGame={finishGame}
-          onEndTimerEarly={() => {
-            setTimerRunning(false);
-            setGameState("question_end");
-            broadcast("game_state_change", {
-              state: "question_end",
-              current_question_index: currentQuestionIndex,
-            });
-          }}
+          onEndTimerEarly={endQuestionEarly}
         />
         <button
           onClick={() => setViewMode('host')}
@@ -832,7 +872,9 @@ export default function HostControlPanel() {
         </div>
 
         {/* Center: Timer & Question Counter */}
-        {(gameState === "question_start" || gameState === "question_end") &&
+        {(gameState === "question_preload" ||
+          gameState === "question_active" ||
+          gameState === "question_end") &&
           currentQuestion && (
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-8 glass-panel px-10 py-3 rounded-full shadow-[0px_20px_40px_rgba(27,43,94,0.06)]">
               <div className="flex flex-col items-center">
@@ -900,16 +942,9 @@ export default function HostControlPanel() {
             <span className="material-symbols-outlined text-sm">tv</span>
             Display
           </a>
-          {gameState === "question_start" && (
+          {gameState === "question_active" && (
             <button
-              onClick={() => {
-                setTimerRunning(false);
-                setGameState("question_end");
-                broadcast("game_state_change", {
-                  state: "question_end",
-                  current_question_index: currentQuestionIndex,
-                });
-              }}
+              onClick={endQuestionEarly}
               className="px-6 py-2.5 rounded-xl text-sm font-bold text-primary border border-primary/10 hover:bg-surface-container-low transition-colors"
             >
               End Early
@@ -922,8 +957,10 @@ export default function HostControlPanel() {
       </header>
 
       <AnimatePresence mode="wait">
-        {/* ===== QUESTION START / QUESTION END ===== */}
-        {(gameState === "question_start" || gameState === "question_end") &&
+        {/* ===== QUESTION PRELOAD / ACTIVE / END ===== */}
+        {(gameState === "question_preload" ||
+          gameState === "question_active" ||
+          gameState === "question_end") &&
           currentQuestion && (
             <motion.main
               key={`question-${currentQuestionIndex}`}
@@ -1397,7 +1434,7 @@ export default function HostControlPanel() {
       </AnimatePresence>
 
       {/* Bottom Controls Bar (during question phases) */}
-      {gameState === "question_start" && currentQuestion && (
+      {gameState === "question_active" && currentQuestion && (
         <footer className="bg-surface-container-lowest px-12 py-6 flex justify-between items-center shadow-[0px_-10px_30px_rgba(0,0,0,0.03)]">
           <div className="flex items-center gap-10">
             <label className="flex items-center cursor-pointer group">
@@ -1412,14 +1449,7 @@ export default function HostControlPanel() {
             </label>
           </div>
           <button
-            onClick={() => {
-              setTimerRunning(false);
-              setGameState("question_end");
-              broadcast("game_state_change", {
-                state: "question_end",
-                current_question_index: currentQuestionIndex,
-              });
-            }}
+            onClick={endQuestionEarly}
             className="flex items-center gap-3 px-10 py-4 bg-secondary-container text-white rounded-xl font-extrabold text-lg shadow-[0px_10px_25px_rgba(255,107,107,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
           >
             <span

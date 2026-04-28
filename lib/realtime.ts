@@ -134,61 +134,87 @@ export function useAnswersSubscription(
 }
 
 /**
- * Hook for the countdown timer, broadcasting ticks via Realtime.
+ * Estimate the server↔client clock offset using a Postgres `server_now()` RPC,
+ * so all devices in a room can compute the same remaining time against a shared
+ * deadline. We average the offset over a few samples to mute single-ping jitter.
  */
-export function useTimer(
-  durationSeconds: number,
-  isRunning: boolean,
-  onTick?: (remaining: number) => void,
+const offsetCache = { value: 0, ready: false };
+
+export function useServerClock() {
+  const [offset, setOffset] = useState(offsetCache.value);
+  const [ready, setReady] = useState(offsetCache.ready);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function sync() {
+      const samples: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const sentAt = Date.now();
+        const { data, error } = await supabase.rpc("server_now");
+        const receivedAt = Date.now();
+        if (error || typeof data !== "number") continue;
+        // Assume symmetric latency: server time at midpoint of the round-trip.
+        const rttMid = sentAt + (receivedAt - sentAt) / 2;
+        samples.push(data - rttMid);
+      }
+      if (cancelled || samples.length === 0) return;
+      samples.sort((a, b) => a - b);
+      const median = samples[Math.floor(samples.length / 2)];
+      offsetCache.value = median;
+      offsetCache.ready = true;
+      setOffset(median);
+      setReady(true);
+    }
+    sync();
+    const id = setInterval(sync, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const serverNow = useCallback(() => Date.now() + offset, [offset]);
+  return { serverNow, ready };
+}
+
+/**
+ * Animate a countdown that ends at a fixed wall-clock instant (server time).
+ * Driven by requestAnimationFrame so it stays smooth and self-corrects against
+ * any prior tab throttling or clock drift. Returns whole seconds remaining.
+ */
+export function useDeadlineCountdown(
+  endsAt: number | null,
+  serverNow: () => number,
   onComplete?: () => void
 ) {
-  const [timeRemaining, setTimeRemaining] = useState(durationSeconds);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const onTickRef = useRef(onTick);
-  onTickRef.current = onTick;
+  const [remaining, setRemaining] = useState(0);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
-
-  // Only reset when timer transitions from stopped→running (not when durationSeconds changes mid-tick)
-  const wasRunningRef = useRef(false);
-  useEffect(() => {
-    if (isRunning && !wasRunningRef.current) {
-      setTimeRemaining(durationSeconds);
-    }
-    wasRunningRef.current = isRunning;
-  }, [isRunning, durationSeconds]);
+  const firedRef = useRef(false);
 
   useEffect(() => {
-    if (!isRunning) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    firedRef.current = false;
+    if (endsAt == null) {
+      setRemaining(0);
       return;
     }
 
-    intervalRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        const next = prev - 1;
-        if (next <= 0) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          onTickRef.current?.(0);
+    let raf = 0;
+    const tick = () => {
+      const ms = Math.max(0, endsAt - serverNow());
+      setRemaining(Math.ceil(ms / 1000));
+      if (ms <= 0) {
+        if (!firedRef.current) {
+          firedRef.current = true;
           onCompleteRef.current?.();
-          return 0;
         }
-        onTickRef.current?.(next);
-        return next;
-      });
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+      raf = requestAnimationFrame(tick);
     };
-  }, [isRunning]);
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [endsAt, serverNow]);
 
-  const reset = useCallback(
-    (newDuration?: number) => {
-      setTimeRemaining(newDuration ?? durationSeconds);
-    },
-    [durationSeconds]
-  );
-
-  return { timeRemaining, reset };
+  return remaining;
 }

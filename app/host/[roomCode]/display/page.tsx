@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { useRoomChannel, usePlayersSubscription } from "@/lib/realtime";
+import { useRoomChannel, usePlayersSubscription, useServerClock, useDeadlineCountdown } from "@/lib/realtime";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 import RacerAvatar from "@/components/shared/RacerAvatar";
 import EndGame from "@/components/EndGame";
@@ -41,8 +41,9 @@ export default function DisplayScreen() {
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [timeLimit, setTimeLimit] = useState(15);
+  const [activeStartsAt, setActiveStartsAt] = useState<number | null>(null);
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [preloadEnded, setPreloadEnded] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
@@ -50,6 +51,28 @@ export default function DisplayScreen() {
   const [loading, setLoading] = useState(true);
 
   const { onBroadcast, broadcast } = useRoomChannel(roomCode);
+  const { serverNow } = useServerClock();
+  const serverNowRef = useRef(serverNow);
+  serverNowRef.current = serverNow;
+
+  const timeLimit = currentQuestion?.time_limit ?? 15;
+  const liveTimeRemaining = useDeadlineCountdown(
+    preloadEnded ? endsAt : null,
+    serverNow
+  );
+  const timeRemaining = preloadEnded ? liveTimeRemaining : timeLimit;
+
+  // Flip preload→active locally when activeStartsAt arrives.
+  useEffect(() => {
+    if (preloadEnded || activeStartsAt == null) return;
+    const ms = activeStartsAt - serverNow();
+    if (ms <= 0) {
+      setPreloadEnded(true);
+      return;
+    }
+    const id = setTimeout(() => setPreloadEnded(true), ms);
+    return () => clearTimeout(id);
+  }, [preloadEnded, activeStartsAt, serverNow]);
 
   // Ref for currentQuestion so broadcast handlers always see latest value
   const currentQuestionRef = useRef(currentQuestion);
@@ -96,8 +119,10 @@ export default function DisplayScreen() {
           if (q) {
             setCurrentQuestion(q as Question);
             setQuestionNumber(idx + 1);
-            setTimeLimit(q.time_limit);
-            setTimeRemaining(0);
+            // Late joiner — show question_end until next question_scheduled.
+            setActiveStartsAt(0);
+            setEndsAt(0);
+            setPreloadEnded(true);
             setGameState("question_end");
           }
         }
@@ -253,27 +278,27 @@ export default function DisplayScreen() {
     onBroadcast("game_state_change", (payload) => {
       const state = payload.state as GameState;
       setGameState(state);
-      if (state === "question_start") {
+    });
+
+    onBroadcast("question_scheduled", (payload) => {
+      const q = payload.question as Question;
+      const activeAt = payload.active_starts_at as number;
+      const endAt = payload.ends_at as number;
+
+      setCurrentQuestion((prev) => {
+        // Re-broadcast for the same question = deadline update only.
+        if (prev?.id === q.id) return prev;
         setCorrectAnswer(null);
         setAnswerDistribution([]);
         setAnsweredCount(0);
-      }
-    });
-
-    onBroadcast("question_reveal", (payload) => {
-      const q = payload.question as Question;
-      setCurrentQuestion(q);
+        return q;
+      });
       setQuestionNumber(payload.question_number as number);
       setTotalQuestions(payload.total_questions as number);
-      setTimeRemaining(q.time_limit);
-      setTimeLimit(q.time_limit);
-      setCorrectAnswer(null);
-      setAnswerDistribution([]);
-    });
-
-    onBroadcast("timer_tick", (payload) => {
-      setTimeRemaining(payload.time_remaining as number);
-      setTimeLimit(payload.time_limit as number);
+      setActiveStartsAt(activeAt);
+      setEndsAt(endAt);
+      setPreloadEnded(serverNowRef.current() >= activeAt);
+      setGameState(serverNowRef.current() >= activeAt ? "question_active" : "question_preload");
     });
 
     onBroadcast("answer_revealed", async (payload) => {
@@ -352,7 +377,7 @@ export default function DisplayScreen() {
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
       {/* Reveal Answer - asks the host page to run scoring + reveal */}
-      {(gameState === "question_end" || gameState === "question_start") && !correctAnswer && currentQuestionRef.current && (
+      {(gameState === "question_end" || gameState === "question_active" || gameState === "question_preload") && !correctAnswer && currentQuestionRef.current && (
         <button
           onClick={() => {
             // Tell host page to run its full revealAnswer() logic (scoring + broadcast)
@@ -583,10 +608,11 @@ export default function DisplayScreen() {
   }
 
   // ---------- ANSWER REVEALED ----------
-  if (
-    (gameState === "question_end" && correctAnswer !== null) ||
-    (gameState === "question_start" && correctAnswer !== null)
-  ) {
+  if (correctAnswer !== null && (
+    gameState === "question_end" ||
+    gameState === "question_active" ||
+    gameState === "question_preload"
+  )) {
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col p-12">
         {hostToolbar}
@@ -682,17 +708,43 @@ export default function DisplayScreen() {
     );
   }
 
-  // ---------- QUESTION ACTIVE / QUESTION END ----------
+  // ---------- QUESTION PRELOAD / ACTIVE / END ----------
   if (
-    (gameState === "question_start" || gameState === "question_end") &&
+    (gameState === "question_preload" ||
+      gameState === "question_active" ||
+      gameState === "question_end") &&
     currentQuestion
   ) {
     const timerFraction = timeLimit > 0 ? timeRemaining / timeLimit : 0;
     const isTimerDone = gameState === "question_end" || timeRemaining === 0;
+    const isActiveOrLater = gameState === "question_active" || gameState === "question_end";
 
     return (
       <div className="min-h-screen bg-[#021549] text-[#FAFAF7] flex flex-col relative">
         {hostToolbar}
+
+        {/* "Get ready" splash during preload — covers the question UI so the
+            projector and player phones reveal in lockstep. */}
+        <AnimatePresence>
+          {gameState === "question_preload" && (
+            <motion.div
+              key="display-preload"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#021549]"
+            >
+              <span className="text-2xl text-white/40 font-bold uppercase tracking-widest mb-4">
+                Get ready
+              </span>
+              <span className="text-9xl font-extrabold text-white tracking-tight">
+                Q{questionNumber}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Q number top left */}
         <div className="absolute top-8 left-12 z-10">
           <span className="px-4 py-2 rounded-full bg-white/10 text-sm font-bold uppercase tracking-widest">
@@ -722,9 +774,9 @@ export default function DisplayScreen() {
                 src={currentQuestion.image_url}
                 alt="Question"
                 className={`max-h-[40vh] object-contain rounded-2xl ${
-                  currentQuestion.is_image_blurred && gameState === "question_start" && timeRemaining > timeLimit * 0.3
+                  currentQuestion.is_image_blurred && isActiveOrLater && timeRemaining > timeLimit * 0.3
                     ? "blur-xl transition-[filter] duration-[3000ms]"
-                    : currentQuestion.is_image_blurred && gameState === "question_start"
+                    : currentQuestion.is_image_blurred && isActiveOrLater
                     ? "blur-sm transition-[filter] duration-[3000ms]"
                     : ""
                 }`}
