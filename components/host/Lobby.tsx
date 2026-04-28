@@ -114,7 +114,7 @@ export default function Lobby({
             </span>
             <h2 className="text-5xl font-extrabold text-primary tracking-tighter leading-tight">
               Waiting for your <br />
-              squad to saddle up...
+              team to join in...
             </h2>
           </div>
 
@@ -213,7 +213,7 @@ export default function Lobby({
               >
                 play_arrow
               </span>
-              {canStart ? "Start the Quiz Night 🎤" : "Waiting for players to join..."}
+              {canStart ? "Start the Quiz 🎤" : "Waiting for players to join..."}
             </button>
             <div className="flex items-center justify-center gap-2 text-outline">
               <span className="material-symbols-outlined text-sm">info</span>
