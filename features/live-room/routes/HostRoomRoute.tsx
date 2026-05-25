@@ -31,12 +31,7 @@ import {
   useAnswersSubscription,
   useTimer,
 } from "@/features/realtime";
-import {
-  scoreStandardQuestion,
-  calculateSliderPoints,
-  calculateTypeInPoints,
-  applyJokerMultiplier,
-} from "@/features/scoring";
+import { scoreAnswers } from "@/features/live-room/application/scoreAnswers";
 import { isInSuspensePhase } from "@/features/leaderboard";
 import type {
   Room,
@@ -320,85 +315,11 @@ export default function HostControlPanel() {
     if (gameState !== "question_end" || !currentQuestion || scoringComplete)
       return;
 
-    async function scoreAnswers() {
-      const question = currentQuestion!;
-      const answers = [...currentAnswers];
-      const updates: {
-        id: string;
-        is_correct: boolean;
-        points_earned: number;
-      }[] = [];
-      const playerPointsMap: Record<string, number> = {};
-
-      for (const answer of answers) {
-        let points = 0;
-        let isCorrect = false;
-
-        const timeTakenMs = answer.time_taken_ms || 0;
-        const timeLimitMs = question.time_limit * 1000;
-        const timeRemainingMs = Math.max(0, timeLimitMs - timeTakenMs);
-
-        switch (question.type) {
-          case "multiple_choice":
-          case "true_false":
-          case "image_question":
-          case "video_question":
-          case "audio_question": {
-            const result = scoreStandardQuestion(
-              answer.answer_value,
-              question.correct_answer,
-              timeRemainingMs,
-              timeLimitMs,
-              question.is_joker,
-              question.points_base
-            );
-            points = result.points;
-            isCorrect = result.isCorrect;
-            break;
-          }
-          case "slider": {
-            const playerVal = parseFloat(answer.answer_value);
-            const correctVal = parseFloat(question.correct_answer);
-            if (!isNaN(playerVal) && !isNaN(correctVal)) {
-              points = calculateSliderPoints(
-                playerVal,
-                correctVal,
-                question.slider_min ?? 0,
-                question.slider_max ?? 100,
-                timeRemainingMs,
-                timeLimitMs,
-                question.points_base
-              );
-              points = applyJokerMultiplier(points, question.is_joker);
-              isCorrect = points > question.points_base * 0.5;
-            }
-            break;
-          }
-          case "type_in": {
-            const result = calculateTypeInPoints(
-              answer.answer_value,
-              question.correct_answer,
-              timeRemainingMs,
-              timeLimitMs,
-              question.points_base
-            );
-            points = applyJokerMultiplier(result.points, question.is_joker);
-            isCorrect = result.isCorrect;
-            break;
-          }
-        }
-
-        updates.push({
-          id: answer.id,
-          is_correct: isCorrect,
-          points_earned: points,
-        });
-
-        if (points > 0) {
-          playerPointsMap[answer.player_id] =
-            (playerPointsMap[answer.player_id] || 0) + points;
-        }
-      }
+    async function runScoring() {
+      const { updates, playerPointsMap } = scoreAnswers(
+        currentQuestion!,
+        currentAnswers
+      );
 
       for (const u of updates) {
         await updateAnswerScore(u.id, u.is_correct, u.points_earned);
@@ -423,7 +344,7 @@ export default function HostControlPanel() {
       setScoringComplete(true);
     }
 
-    scoreAnswers();
+    runScoring();
   }, [gameState, currentQuestion, currentAnswers, scoringComplete, room]);
 
   // ---------- LEADERBOARD ----------
