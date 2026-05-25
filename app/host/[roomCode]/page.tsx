@@ -4,21 +4,21 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { saveSessionResult, type QuestionStat } from "@/lib/quizStorage";
 import {
   useRoomChannel,
   usePlayersSubscription,
   useAnswersSubscription,
   useTimer,
-} from "@/lib/realtime";
+} from "@/features/realtime";
 import {
   scoreStandardQuestion,
   calculateSliderPoints,
   calculateTypeInPoints,
   applyJokerMultiplier,
-} from "@/lib/scoring";
-import { isInSuspensePhase } from "@/lib/suspense";
+} from "@/features/scoring";
+import { isInSuspensePhase } from "@/features/live-room/domain/suspense";
 import type {
   Room,
   Quiz,

@@ -4,8 +4,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
-import { generateHorseName } from "@/lib/horses";
+import { supabase } from "@/integrations/supabase/client";
+import { generateHorseName } from "@/features/player-experience/domain/horses";
 import type {
   Question,
   GameStatePayload,

@@ -20,8 +20,8 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { supabase, generateRoomCode } from "@/lib/supabase";
-import { getHostId } from "@/lib/host";
+import { supabase, generateRoomCode } from "@/integrations/supabase/client";
+import { getHostId } from "@/shared/hostIdentity";
 import { saveQuizTemplate, markTemplateAsRun } from "@/lib/quizStorage";
 import type { QuestionFormData } from "@/types/quiz";
 import QuestionEditor from "@/components/host/QuestionEditor";

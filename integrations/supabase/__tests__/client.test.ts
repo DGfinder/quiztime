@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateRoomCode } from "../lib/supabase";
+import { generateRoomCode } from "../client";
 
 describe("generateRoomCode", () => {
   it("returns a 6-character string", () => {

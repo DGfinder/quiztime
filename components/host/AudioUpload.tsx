@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { uploadQuizAudio } from "@/lib/storage";
+import { uploadQuizAudio } from "@/integrations/supabase/storage";
 
 interface AudioUploadProps {
   onUpload: (url: string) => void;

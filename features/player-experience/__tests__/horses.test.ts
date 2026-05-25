@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateHorseName, getHorseEmoji } from "../lib/horses";
+import { generateHorseName, getHorseEmoji } from "../domain/horses";
 
 describe("generateHorseName", () => {
   it("returns a string with two words", () => {

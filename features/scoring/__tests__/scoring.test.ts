@@ -5,7 +5,7 @@ import {
   calculateSliderPoints,
   calculateTypeInPoints,
   scoreStandardQuestion,
-} from "../lib/scoring";
+} from "../domain/scoring";
 
 describe("calculateTimeDecayPoints", () => {
   it("returns full points when all time remains", () => {

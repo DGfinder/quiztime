@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase, generateRoomCode } from "@/lib/supabase";
-import { getHostId } from "@/lib/host";
+import { supabase, generateRoomCode } from "@/integrations/supabase/client";
+import { getHostId } from "@/shared/hostIdentity";
 import {
   getQuizTemplates,
   getSessionResults,

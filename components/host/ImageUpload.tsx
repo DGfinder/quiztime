@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { uploadQuizImage } from "@/lib/storage";
+import { uploadQuizImage } from "@/integrations/supabase/storage";
 
 interface ImageUploadProps {
   value: string;

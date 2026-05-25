@@ -40,5 +40,3 @@ export function generateRoomCode(): string {
   return code;
 }
 
-// Re-export getHostId from lib/host for backward compatibility
-export { getHostId } from "@/lib/host";

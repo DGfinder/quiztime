@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
-import { useRoomChannel, usePlayersSubscription } from "@/lib/realtime";
+import { supabase } from "@/integrations/supabase/client";
+import { useRoomChannel, usePlayersSubscription } from "@/features/realtime";
 import QRCodeDisplay from "@/shared/ui/QRCodeDisplay";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
 import EndGame from "@/components/EndGame";

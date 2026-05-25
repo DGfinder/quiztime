@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import type { Room, Player, LeaderboardEntry } from "@/types/quiz";
 import Button from "@/shared/ui/Button";
 import HorseRace from "@/components/leaderboard/HorseRace";
 import RankedList from "@/components/leaderboard/RankedList";
 import FinalReveal from "@/components/leaderboard/FinalReveal";
 import { LeaderboardSkeleton } from "@/shared/ui/Skeleton";
-import { scramblePositions } from "@/lib/suspense";
+import { scramblePositions } from "@/features/live-room/domain/suspense";
 
 type ViewMode = "race" | "ranked";
 

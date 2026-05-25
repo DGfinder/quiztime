@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
-import { hasHostId } from "@/lib/host";
+import { hasHostId } from "@/shared/hostIdentity";
 
 export default function HomePage() {
   const router = useRouter();
