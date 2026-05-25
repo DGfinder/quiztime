@@ -26,7 +26,7 @@ import {
   loadQuizTemplate,
   markTemplateAsRun,
   type QuestionBankItem,
-} from "@/lib/quizStorage";
+} from "@/features/quiz-authoring";
 import type { QuestionFormData, QuestionType } from "@/types/quiz";
 import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
 import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";

@@ -8,14 +8,16 @@ import { supabase, generateRoomCode } from "@/integrations/supabase/client";
 import { getHostId } from "@/shared/hostIdentity";
 import {
   getQuizTemplates,
-  getSessionResults,
   deleteQuizTemplate,
   duplicateQuizTemplate,
   loadQuizTemplate,
   markTemplateAsRun,
   type QuizTemplate,
+} from "@/features/quiz-authoring";
+import {
+  getSessionResults,
   type SessionResult,
-} from "@/lib/quizStorage";
+} from "@/features/session-results";
 import { QuizCardSkeleton, StatCardSkeleton } from "@/shared/ui/Skeleton";
 
 export default function DashboardPage() {

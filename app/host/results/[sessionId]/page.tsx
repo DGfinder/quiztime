@@ -7,7 +7,7 @@ import {
   getSessionResult,
   type SessionResult,
   type QuestionStat,
-} from "@/lib/quizStorage";
+} from "@/features/session-results";
 import type { LeaderboardEntry } from "@/types/quiz";
 
 export default function SessionResultsPage() {
