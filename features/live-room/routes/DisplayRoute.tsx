@@ -4,6 +4,16 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchRoomByCode,
+  fetchRoomPlayersByJoined,
+  fetchRoomPlayersByScore,
+  fetchQuestionsByQuiz,
+  fetchQuizByRoom,
+  countQuizQuestions,
+  fetchAnswerValues,
+  fetchQuestionById,
+} from "@/features/live-room/data/liveRoomRepository";
 import { useRoomChannel, usePlayersSubscription } from "@/features/realtime";
 import QRCodeDisplay from "@/shared/ui/QRCodeDisplay";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
@@ -59,35 +69,23 @@ export default function DisplayScreen() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const { data: roomData } = await supabase
-        .from("qt_rooms")
-        .select("*")
-        .eq("room_code", roomCode)
-        .single();
+      const roomData = await fetchRoomByCode(roomCode);
 
       if (!roomData) {
         setLoading(false);
         return;
       }
-      setRoom(roomData as Room);
+      setRoom(roomData);
 
-      const { data: playersData } = await supabase
-        .from("qt_players")
-        .select("*")
-        .eq("room_id", roomData.id)
-        .order("joined_at", { ascending: true });
+      const playersData = await fetchRoomPlayersByJoined(roomData.id);
 
-      if (playersData) setPlayers(playersData as Player[]);
+      if (playersData) setPlayers(playersData);
 
       if (roomData.status === "finished") setGameState("finished");
 
       // Late-join catch-up: if game is already active
-      if (roomData.status === "active" && roomData.current_question_index >= 0 && roomData.current_quiz_id) {
-        const { data: questions } = await supabase
-          .from("qt_questions")
-          .select("*")
-          .eq("quiz_id", roomData.current_quiz_id)
-          .order("order_index", { ascending: true });
+      if (roomData.status === "active" && roomData.current_question_index !== undefined && roomData.current_question_index >= 0 && roomData.current_quiz_id) {
+        const questions = await fetchQuestionsByQuiz(roomData.current_quiz_id);
 
         if (questions && questions.length > 0) {
           setTotalQuestions(questions.length);
@@ -104,17 +102,10 @@ export default function DisplayScreen() {
       }
 
       // Get quiz info for total questions
-      const { data: quizData } = await supabase
-        .from("qt_quizzes")
-        .select("id")
-        .eq("room_id", roomData.id)
-        .single();
+      const quizData = await fetchQuizByRoom(roomData.id);
 
       if (quizData) {
-        const { count } = await supabase
-          .from("qt_questions")
-          .select("id", { count: "exact", head: true })
-          .eq("quiz_id", quizData.id);
+        const count = await countQuizQuestions(quizData.id);
         if (count) setTotalQuestions(count);
       }
 
@@ -165,12 +156,9 @@ export default function DisplayScreen() {
   // Build answer distribution from DB when answer is revealed
   const fetchAnswerDistribution = useCallback(
     async (questionId: string, correct: string, question: Question) => {
-      const { data: answers } = await supabase
-        .from("qt_answers")
-        .select("answer_value")
-        .eq("question_id", questionId);
+      const answers = await fetchAnswerValues(questionId);
 
-      if (!answers || answers.length === 0) {
+      if (answers.length === 0) {
         setAnswerDistribution([]);
         return;
       }
@@ -283,12 +271,8 @@ export default function DisplayScreen() {
 
       let q = currentQuestionRef.current;
       if (!q && payload.questionId) {
-        const { data } = await supabase
-          .from("qt_questions")
-          .select("*")
-          .eq("id", payload.questionId)
-          .single();
-        if (data) q = data as Question;
+        const data = await fetchQuestionById(payload.questionId as string);
+        if (data) q = data;
       }
       if (q) {
         fetchAnswerDistribution(payload.questionId as string, answer, q);
@@ -299,14 +283,9 @@ export default function DisplayScreen() {
       const entries = payload.leaderboard as LeaderboardEntry[];
       setLeaderboard(entries);
       if (room) {
-        supabase
-          .from("qt_players")
-          .select("*")
-          .eq("room_id", room.id)
-          .order("score", { ascending: false })
-          .then(({ data }) => {
-            if (data) setPlayers(data as Player[]);
-          });
+        fetchRoomPlayersByScore(room.id).then((data) => {
+          if (data) setPlayers(data);
+        });
       }
     });
   }, [onBroadcast, room]);

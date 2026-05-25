@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchRoomByCode,
+  fetchRoomPlayersByScore,
+  fetchRoomStatus,
+} from "@/features/live-room/data/liveRoomRepository";
 import type { Room, Player, LeaderboardEntry } from "@/shared/domain/types";
 import Button from "@/shared/ui/Button";
 import { HorseRace } from "@/features/leaderboard";
@@ -33,33 +38,25 @@ export default function LeaderboardPage() {
       setError(null);
 
       try {
-        const { data: roomData, error: roomErr } = await supabase
-          .from("qt_rooms")
-          .select("*")
-          .eq("room_code", roomCode)
-          .single();
+        const roomData = await fetchRoomByCode(roomCode);
 
-        if (roomErr || !roomData) {
+        if (!roomData) {
           setError("Room not found.");
           setLoading(false);
           return;
         }
 
-        setRoom(roomData as Room);
+        setRoom(roomData);
 
-        const { data: playersData, error: playersErr } = await supabase
-          .from("qt_players")
-          .select("*")
-          .eq("room_id", roomData.id)
-          .order("score", { ascending: false });
+        const playersData = await fetchRoomPlayersByScore(roomData.id);
 
-        if (playersErr) {
+        if (playersData === null) {
           setError("Failed to load players.");
           setLoading(false);
           return;
         }
 
-        setPlayers((playersData as Player[]) || []);
+        setPlayers(playersData);
       } catch {
         setError("Failed to load leaderboard data.");
       } finally {
@@ -165,15 +162,11 @@ export default function LeaderboardPage() {
     if (!room?.id || room.status === "finished") return;
 
     const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from("qt_rooms")
-        .select("status")
-        .eq("id", room.id)
-        .single();
+      const status = await fetchRoomStatus(room.id);
 
-      if (data && data.status !== room.status) {
+      if (status && status !== room.status) {
         setRoom((prev) =>
-          prev ? { ...prev, status: data.status as Room["status"] } : prev
+          prev ? { ...prev, status: status as Room["status"] } : prev
         );
       }
     }, 5000);

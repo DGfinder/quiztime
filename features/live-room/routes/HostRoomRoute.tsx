@@ -4,7 +4,26 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchRoomByCode,
+  fetchQuizByRoom,
+  fetchQuestionsByQuiz,
+  fetchRoomPlayersByJoined,
+  fetchRoomPlayersByScore,
+  fetchAnswerScore,
+  fetchCorrectAnswerTimes,
+  fetchAnswerCorrectness,
+  fetchQuestionAnswerStats,
+  fetchQuestionIdsByQuiz,
+  setRoomActive,
+  setRoomCurrentQuestion,
+  updateAnswerScore,
+  updatePlayerScore,
+  setRoomFinished,
+  deleteAnswersForQuestions,
+  deleteRoomPlayers,
+  resetRoomToLobby,
+} from "@/features/live-room/data/liveRoomRepository";
 import { saveSessionResult, type QuestionStat } from "@/features/session-results";
 import {
   useRoomChannel,
@@ -158,53 +177,37 @@ export default function HostControlPanel() {
       setError(null);
 
       try {
-        const { data: roomData, error: roomErr } = await supabase
-          .from("qt_rooms")
-          .select("*")
-          .eq("room_code", roomCode)
-          .single();
+        const roomData = await fetchRoomByCode(roomCode);
 
-        if (roomErr || !roomData) {
+        if (!roomData) {
           setError("Room not found.");
           setLoading(false);
           return;
         }
-        setRoom(roomData as Room);
+        setRoom(roomData);
 
-        const { data: quizData, error: quizErr } = await supabase
-          .from("qt_quizzes")
-          .select("*")
-          .eq("room_id", roomData.id)
-          .single();
+        const quizData = await fetchQuizByRoom(roomData.id);
 
-        if (quizErr || !quizData) {
+        if (!quizData) {
           setError("Quiz not found for this room.");
           setLoading(false);
           return;
         }
-        setQuiz(quizData as Quiz);
+        setQuiz(quizData);
 
-        const { data: questionsData, error: questionsErr } = await supabase
-          .from("qt_questions")
-          .select("*")
-          .eq("quiz_id", quizData.id)
-          .order("order_index", { ascending: true });
+        const questionsData = await fetchQuestionsByQuiz(quizData.id);
 
-        if (questionsErr) {
+        if (questionsData === null) {
           setError("Failed to load questions.");
           setLoading(false);
           return;
         }
-        setQuestions((questionsData as Question[]) || []);
+        setQuestions(questionsData);
 
-        const { data: playersData } = await supabase
-          .from("qt_players")
-          .select("*")
-          .eq("room_id", roomData.id)
-          .order("joined_at", { ascending: true });
+        const playersData = await fetchRoomPlayersByJoined(roomData.id);
 
         if (playersData) {
-          setPlayers(playersData as Player[]);
+          setPlayers(playersData);
         }
 
         if (roomData.status === "finished") {
@@ -253,10 +256,7 @@ export default function HostControlPanel() {
   const startGame = async () => {
     if (!room || players.length === 0) return;
 
-    await supabase
-      .from("qt_rooms")
-      .update({ status: "active", current_quiz_id: quiz?.id })
-      .eq("id", room.id);
+    await setRoomActive(room.id, quiz?.id);
 
     setRoom((prev) => (prev ? { ...prev, status: "active" } : prev));
     toast.success(`Game started! ${players.length} player${players.length !== 1 ? "s" : ""} in the room.`);
@@ -310,11 +310,7 @@ export default function HostControlPanel() {
 
     // Persist current question index to DB for late-join catch-up
     if (room) {
-      await supabase.from('qt_rooms').update({
-        current_question_index: index,
-        current_quiz_id: quiz?.id,
-        status: 'active',
-      }).eq('id', room.id);
+      await setRoomCurrentQuestion(room.id, index, quiz?.id);
     }
   };
 
@@ -405,32 +401,22 @@ export default function HostControlPanel() {
       }
 
       for (const u of updates) {
-        await supabase
-          .from("qt_answers")
-          .update({ is_correct: u.is_correct, points_earned: u.points_earned })
-          .eq("id", u.id);
+        await updateAnswerScore(u.id, u.is_correct, u.points_earned);
       }
 
       for (const [playerId, pointsToAdd] of Object.entries(playerPointsMap)) {
         const player = playersRef.current.find((p) => p.id === playerId);
         if (player) {
           const newScore = player.score + pointsToAdd;
-          await supabase
-            .from("qt_players")
-            .update({ score: newScore })
-            .eq("id", playerId);
+          await updatePlayerScore(playerId, newScore);
         }
       }
 
       if (room) {
-        const { data: freshPlayers } = await supabase
-          .from("qt_players")
-          .select("*")
-          .eq("room_id", room.id)
-          .order("score", { ascending: false });
+        const freshPlayers = await fetchRoomPlayersByScore(room.id);
 
         if (freshPlayers) {
-          setPlayers(freshPlayers as Player[]);
+          setPlayers(freshPlayers);
         }
       }
 
@@ -463,11 +449,7 @@ export default function HostControlPanel() {
 
     for (const answer of currentAnswers) {
       // Fetch the scored answer from DB to get is_correct and points_earned
-      const { data } = await supabase
-        .from("qt_answers")
-        .select("is_correct, points_earned")
-        .eq("id", answer.id)
-        .single();
+      const data = await fetchAnswerScore(answer.id);
 
       if (data) {
         playerResults[answer.player_id] = {
@@ -497,13 +479,9 @@ export default function HostControlPanel() {
     // Fetch fresh scores from DB before showing leaderboard
     let latestPlayers = players;
     if (room) {
-      const { data } = await supabase
-        .from("qt_players")
-        .select("*")
-        .eq("room_id", room.id)
-        .order("score", { ascending: false });
+      const data = await fetchRoomPlayersByScore(room.id);
       if (data) {
-        latestPlayers = data as Player[];
+        latestPlayers = data;
         setPlayers(latestPlayers);
       }
     }
@@ -544,13 +522,9 @@ export default function HostControlPanel() {
     if (room) {
       const questionIds = questionsRef.current.map((q) => q.id);
       if (questionIds.length > 0) {
-        const { data: allAnswers } = await supabase
-          .from("qt_answers")
-          .select("player_id, time_taken_ms, is_correct")
-          .in("question_id", questionIds)
-          .eq("is_correct", true);
+        const allAnswers = await fetchCorrectAnswerTimes(questionIds);
 
-        if (allAnswers && allAnswers.length > 0) {
+        if (allAnswers.length > 0) {
           const grouped: Record<string, number[]> = {};
           for (const a of allAnswers) {
             if (!grouped[a.player_id]) grouped[a.player_id] = [];
@@ -570,10 +544,7 @@ export default function HostControlPanel() {
     if (room) {
       const questionIds = questionsRef.current.map((q) => q.id);
       if (questionIds.length > 0) {
-        const { data: allAnswers } = await supabase
-          .from("qt_answers")
-          .select("player_id, is_correct")
-          .in("question_id", questionIds);
+        const allAnswers = await fetchAnswerCorrectness(questionIds);
         if (allAnswers) {
           for (const a of allAnswers) {
             if (a.is_correct) {
@@ -596,20 +567,14 @@ export default function HostControlPanel() {
     broadcast("game_state_change", { state: "finished" });
 
     if (room) {
-      await supabase
-        .from("qt_rooms")
-        .update({ status: "finished" })
-        .eq("id", room.id);
+      await setRoomFinished(room.id);
       setRoom((prev) => (prev ? { ...prev, status: "finished" } : prev));
 
       // Save session results
       try {
         const questionStats: QuestionStat[] = [];
         for (const q of questionsRef.current) {
-          const { data: answers } = await supabase
-            .from("qt_answers")
-            .select("is_correct, time_taken_ms")
-            .eq("question_id", q.id);
+          const answers = await fetchQuestionAnswerStats(q.id);
 
           const total = answers?.length || 0;
           const correctCount = answers?.filter((a: { is_correct: boolean }) => a.is_correct).length || 0;
@@ -1350,18 +1315,15 @@ export default function HostControlPanel() {
               onPlayAgain={async () => {
                 if (!room || !quiz) return;
                 // Delete all answers for this room's questions
-                const { data: qIds } = await supabase.from('qt_questions').select('id').eq('quiz_id', quiz.id);
-                if (qIds?.length) {
-                  await supabase.from('qt_answers').delete().in('question_id', qIds.map(q => q.id));
+                const qIds = await fetchQuestionIdsByQuiz(quiz.id);
+                if (qIds.length) {
+                  await deleteAnswersForQuestions(qIds);
                 }
                 // Delete ALL players — they'll rejoin via QR code
-                await supabase.from('qt_players').delete().eq('room_id', room.id);
+                await deleteRoomPlayers(room.id);
                 setPlayers([]);
                 // Reset room to lobby
-                await supabase
-                  .from("qt_rooms")
-                  .update({ status: "lobby", current_question_index: -1 })
-                  .eq("id", room.id);
+                await resetRoomToLobby(room.id);
                 setCurrentQuestionIndex(0);
                 setLeaderboard([]);
                 setGameState("lobby");
