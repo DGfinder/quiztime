@@ -29,6 +29,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check architecture boundaries
+        run: npm run lint:boundaries
+
       - name: Run tests
         run: npm run test
         env:
