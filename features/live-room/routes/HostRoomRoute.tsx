@@ -24,7 +24,13 @@ import {
   deleteRoomPlayers,
   resetRoomToLobby,
 } from "@/features/live-room/data/liveRoomRepository";
-import { saveSessionResult, type QuestionStat } from "@/features/session-results";
+import {
+  saveSessionResult,
+  computeAvgTimeMap,
+  computeCorrectCountMap,
+  buildQuestionStat,
+  type QuestionStat,
+} from "@/features/session-results";
 import {
   useRoomChannel,
   usePlayersSubscription,
@@ -427,40 +433,22 @@ export default function HostControlPanel() {
     setGameState("finished");
 
     // Compute per-player average time (correct answers only)
-    const avgTimeMap: Record<string, number> = {};
+    let avgTimeMap: Record<string, number> = {};
     if (room) {
       const questionIds = questionsRef.current.map((q) => q.id);
       if (questionIds.length > 0) {
-        const allAnswers = await fetchCorrectAnswerTimes(questionIds);
-
-        if (allAnswers.length > 0) {
-          const grouped: Record<string, number[]> = {};
-          for (const a of allAnswers) {
-            if (!grouped[a.player_id]) grouped[a.player_id] = [];
-            grouped[a.player_id].push(a.time_taken_ms);
-          }
-          for (const [pid, times] of Object.entries(grouped)) {
-            avgTimeMap[pid] = Math.round(
-              times.reduce((s, t) => s + t, 0) / times.length
-            );
-          }
-        }
+        avgTimeMap = computeAvgTimeMap(await fetchCorrectAnswerTimes(questionIds));
       }
     }
 
-    // Compute per-player correct answer count (all answers, not just correct)
-    const correctCountMap: Record<string, number> = {};
+    // Compute per-player correct answer count
+    let correctCountMap: Record<string, number> = {};
     if (room) {
       const questionIds = questionsRef.current.map((q) => q.id);
       if (questionIds.length > 0) {
-        const allAnswers = await fetchAnswerCorrectness(questionIds);
-        if (allAnswers) {
-          for (const a of allAnswers) {
-            if (a.is_correct) {
-              correctCountMap[a.player_id] = (correctCountMap[a.player_id] || 0) + 1;
-            }
-          }
-        }
+        correctCountMap = computeCorrectCountMap(
+          await fetchAnswerCorrectness(questionIds)
+        );
       }
     }
 
@@ -484,23 +472,7 @@ export default function HostControlPanel() {
         const questionStats: QuestionStat[] = [];
         for (const q of questionsRef.current) {
           const answers = await fetchQuestionAnswerStats(q.id);
-
-          const total = answers?.length || 0;
-          const correctCount = answers?.filter((a: { is_correct: boolean }) => a.is_correct).length || 0;
-          const avgTimeMs =
-            total > 0
-              ? Math.round(
-                  (answers || []).reduce((sum: number, a: { time_taken_ms: number }) => sum + a.time_taken_ms, 0) / total
-                )
-              : 0;
-
-          questionStats.push({
-            questionId: q.id,
-            text: q.question_text,
-            totalAnswers: total,
-            correctCount,
-            avgTimeMs,
-          });
+          questionStats.push(buildQuestionStat(q.id, q.question_text, answers));
         }
 
         await saveSessionResult(
