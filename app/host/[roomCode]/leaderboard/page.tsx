@@ -6,9 +6,9 @@ import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import type { Room, Player, LeaderboardEntry } from "@/types/quiz";
 import Button from "@/shared/ui/Button";
-import HorseRace from "@/components/leaderboard/HorseRace";
-import RankedList from "@/components/leaderboard/RankedList";
-import FinalReveal from "@/components/leaderboard/FinalReveal";
+import HorseRace from "@/features/leaderboard/components/HorseRace";
+import RankedList from "@/features/leaderboard/components/RankedList";
+import FinalReveal from "@/features/leaderboard/components/FinalReveal";
 import { LeaderboardSkeleton } from "@/shared/ui/Skeleton";
 import { scramblePositions } from "@/features/live-room/domain/suspense";
 

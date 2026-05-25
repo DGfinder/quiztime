@@ -24,8 +24,8 @@ import { supabase, generateRoomCode } from "@/integrations/supabase/client";
 import { getHostId } from "@/shared/hostIdentity";
 import { saveQuizTemplate, markTemplateAsRun } from "@/lib/quizStorage";
 import type { QuestionFormData } from "@/types/quiz";
-import QuestionEditor from "@/components/host/QuestionEditor";
-import SortableQuestionCard from "@/components/host/SortableQuestionCard";
+import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
+import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
 
 function createEmptyQuestion(): QuestionFormData {
   return {

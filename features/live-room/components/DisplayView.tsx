@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { GameState, Question, Player, LeaderboardEntry, Answer } from '@/types/quiz';
 import QRCodeDisplay from '@/shared/ui/QRCodeDisplay';
 import RacerAvatar from '@/shared/ui/RacerAvatar';
-import EndGame from '@/components/EndGame';
+import EndGame from './EndGame';
 
 interface AnswerDistItem {
   label: string;

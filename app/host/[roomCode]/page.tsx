@@ -31,14 +31,14 @@ import type {
 import Image from "next/image";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
-import AnswerDistribution from "@/components/host/AnswerDistribution";
-import Lobby from "@/components/host/Lobby";
-import SuspenseModal from "@/components/host/SuspenseModal";
-import VideoPlayer from "@/components/host/VideoPlayer";
-import AudioPlayer from "@/components/host/AudioPlayer";
-import EndGame from "@/components/EndGame";
-import TimerBar from "@/components/player/TimerBar";
-import DisplayView from "@/components/host/DisplayView";
+import AnswerDistribution from "@/features/live-room/components/AnswerDistribution";
+import Lobby from "@/features/live-room/components/Lobby";
+import SuspenseModal from "@/features/live-room/components/SuspenseModal";
+import { VideoPlayer } from "@/features/media";
+import { AudioPlayer } from "@/features/media";
+import EndGame from "@/features/live-room/components/EndGame";
+import TimerBar from "@/features/player-experience/components/TimerBar";
+import DisplayView from "@/features/live-room/components/DisplayView";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
 
 export default function HostControlPanel() {

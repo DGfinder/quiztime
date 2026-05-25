@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { QuestionFormData, QuestionType } from "@/types/quiz";
-import ImageUpload from "./ImageUpload";
-import AudioUpload from "./AudioUpload";
-import AudioPlayer from "./AudioPlayer";
-import { extractVideoId } from "./VideoPlayer";
+import { ImageUpload } from "@/features/media";
+import { AudioUpload } from "@/features/media";
+import { AudioPlayer } from "@/features/media";
+import { extractVideoId } from "@/features/media";
 import AIGenerateButton from "./AIGenerateButton";
 
 interface QuestionEditorProps {

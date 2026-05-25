@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRoomChannel, usePlayersSubscription } from "@/features/realtime";
 import QRCodeDisplay from "@/shared/ui/QRCodeDisplay";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
-import EndGame from "@/components/EndGame";
+import EndGame from "@/features/live-room/components/EndGame";
 import type {
   Room,
   Player,

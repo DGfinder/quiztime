@@ -18,10 +18,10 @@ import type {
 import Image from "next/image";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
-import TimerBar from "@/components/player/TimerBar";
-import AnswerButtons from "@/components/player/AnswerButtons";
-import WaitingScreen from "@/components/player/WaitingScreen";
-import AnswerReveal from "@/components/player/AnswerReveal";
+import TimerBar from "@/features/player-experience/components/TimerBar";
+import AnswerButtons from "@/features/player-experience/components/AnswerButtons";
+import WaitingScreen from "@/features/player-experience/components/WaitingScreen";
+import AnswerReveal from "@/features/player-experience/components/AnswerReveal";
 
 // ─── Types ───────────────────────────────────────────────────────
 

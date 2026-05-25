@@ -28,8 +28,8 @@ import {
   type QuestionBankItem,
 } from "@/lib/quizStorage";
 import type { QuestionFormData, QuestionType } from "@/types/quiz";
-import QuestionEditor from "@/components/host/QuestionEditor";
-import SortableQuestionCard from "@/components/host/SortableQuestionCard";
+import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
+import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
 
 function createEmptyQuestion(): QuestionFormData {
   return {
