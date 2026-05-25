@@ -12,8 +12,13 @@ describe("calculateTimeDecayPoints", () => {
     expect(calculateTimeDecayPoints(15000, 15000)).toBe(1000);
   });
 
-  it("returns half points at 50% time remaining", () => {
-    expect(calculateTimeDecayPoints(7500, 15000)).toBe(500);
+  it("applies the 1s reading grace before decaying at 50% time remaining", () => {
+    // First second is free: adjusted = (7500 + 1000) / 15000 ≈ 0.567
+    expect(calculateTimeDecayPoints(7500, 15000)).toBe(567);
+  });
+
+  it("awards full points while still inside the 1s grace window", () => {
+    expect(calculateTimeDecayPoints(14500, 15000)).toBe(1000);
   });
 
   it("returns 0 when time is 0 or negative", () => {
@@ -91,9 +96,9 @@ describe("calculateTypeInPoints", () => {
     expect(result.points).toBe(0);
   });
 
-  it("applies time decay on correct answer", () => {
+  it("applies time decay (with 1s grace) on correct answer", () => {
     const result = calculateTypeInPoints("paris", "paris", 7500, 15000);
-    expect(result.points).toBe(500);
+    expect(result.points).toBe(567);
   });
 });
 
