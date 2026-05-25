@@ -16,6 +16,7 @@ import { RankedList } from "@/features/leaderboard";
 import { FinalReveal } from "@/features/leaderboard";
 import { LeaderboardSkeleton } from "@/shared/ui/Skeleton";
 import { scramblePositions } from "@/features/leaderboard";
+import { rankLeaderboard } from "@/features/leaderboard";
 
 type ViewMode = "race" | "ranked";
 
@@ -176,13 +177,7 @@ export default function LeaderboardPage() {
 
   const isFinal = room?.status === "finished";
 
-  const entries: LeaderboardEntry[] = players.map((p, idx) => ({
-    player_id: p.id,
-    player_name: p.name,
-    horse_name: p.horse_name,
-    score: p.score,
-    rank: idx + 1,
-  }));
+  const entries: LeaderboardEntry[] = rankLeaderboard(players);
 
   const maxScore = Math.max(...players.map((p) => p.score), 1);
 

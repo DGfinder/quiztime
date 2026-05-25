@@ -25,6 +25,7 @@ import type {
   GameState,
   LeaderboardEntry,
 } from "@/shared/domain/types";
+import { rankLeaderboard } from "@/features/leaderboard";
 
 function getPlayerIndex(players: Player[], playerId: string): number {
   const sorted = [...players].sort(
@@ -293,14 +294,7 @@ export default function DisplayScreen() {
   // Build live leaderboard from players
   const liveLeaderboard = useMemo((): LeaderboardEntry[] => {
     if (leaderboard.length > 0) return leaderboard;
-    const sorted = [...players].sort((a, b) => b.score - a.score);
-    return sorted.map((p, idx) => ({
-      player_id: p.id,
-      player_name: p.name,
-      horse_name: p.horse_name,
-      score: p.score,
-      rank: idx + 1,
-    }));
+    return rankLeaderboard(players);
   }, [players, leaderboard]);
 
   const joinUrl = "quiztime-alpha.vercel.app";

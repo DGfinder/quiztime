@@ -32,7 +32,7 @@ import {
   useTimer,
 } from "@/features/realtime";
 import { scoreAnswers } from "@/features/live-room/application/scoreAnswers";
-import { isInSuspensePhase } from "@/features/leaderboard";
+import { isInSuspensePhase, rankLeaderboard } from "@/features/leaderboard";
 import type {
   Room,
   Quiz,
@@ -349,18 +349,13 @@ export default function HostControlPanel() {
 
   // ---------- LEADERBOARD ----------
 
-  const buildLeaderboard = useCallback((avgTimeMap?: Record<string, number>, correctCountMap?: Record<string, number>): LeaderboardEntry[] => {
-    const sorted = [...players].sort((a, b) => b.score - a.score);
-    return sorted.map((p, idx) => ({
-      player_id: p.id,
-      player_name: p.name,
-      horse_name: p.horse_name,
-      score: p.score,
-      rank: idx + 1,
-      avg_time_ms: avgTimeMap?.[p.id],
-      correct_count: correctCountMap?.[p.id],
-    }));
-  }, [players]);
+  const buildLeaderboard = useCallback(
+    (
+      avgTimeMap?: Record<string, number>,
+      correctCountMap?: Record<string, number>
+    ): LeaderboardEntry[] => rankLeaderboard(players, avgTimeMap, correctCountMap),
+    [players]
+  );
 
   const revealAnswer = async () => {
     if (!currentQuestion) return;
@@ -406,14 +401,7 @@ export default function HostControlPanel() {
         setPlayers(latestPlayers);
       }
     }
-    const sorted = [...latestPlayers].sort((a, b) => b.score - a.score);
-    const entries = sorted.map((p, idx) => ({
-      player_id: p.id,
-      player_name: p.name,
-      horse_name: p.horse_name,
-      score: p.score,
-      rank: idx + 1,
-    }));
+    const entries = rankLeaderboard(latestPlayers);
     setLeaderboard(entries);
     setGameState("leaderboard");
 
