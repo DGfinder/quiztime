@@ -2,7 +2,7 @@
 
 Real-time pub quiz app for team meetings. Host creates a quiz, players join on their phones, answer questions live, and compete on a horse race leaderboard.
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Realtime + DB) · Framer Motion
+**Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · Supabase (Realtime + DB) · Framer Motion
 
 ## Setup
 
@@ -87,9 +87,14 @@ All events flow through a Supabase Realtime broadcast channel named `room:{roomC
 | `game_state_change` | Host → Players | `{ state, current_question_index }` |
 | `question_reveal` | Host → Players | `{ question (no answer), question_number, total }` |
 | `timer_tick` | Host → Players | `{ time_remaining, time_limit }` |
+| `answer_revealed` | Host → Players | `{ questionId, correctAnswer, playerResults, nextImageUrl? }` |
 | `leaderboard_update` | Host → Players | `{ leaderboard: [{player_id, name, horse_name, score, rank}] }` |
+| `suspense_mode` | Host → Players | enables late-game suspense UI |
+| `final_reveal_start` | Host → Players | triggers the final winner reveal |
 
-Player answers are written directly to the `answers` table. The host subscribes to Postgres changes on `answers` to track submissions in real-time.
+Player answers are written directly to the `qt_answers` table. The host subscribes to Postgres changes on `qt_answers` to track submissions in real-time.
+
+> Full contract (channels, payload types, late-join): [`docs/contracts/realtime-events.md`](docs/contracts/realtime-events.md).
 
 ### Question types
 
@@ -106,7 +111,7 @@ Any question can be flagged as a **Joker Round** (2x point multiplier).
 ### Scoring
 
 - **Base:** 1000 points per question
-- **Time decay:** `points = round(1000 × (timeRemaining / timeLimit))`
+- **Time decay:** `points = round(1000 × (adjustedRemaining / timeLimit))`, where the first 1s is a free reading grace (`adjustedRemaining = min(timeRemaining + 1000, timeLimit)`)
 - **Wrong:** 0 points
 - **Joker:** 2× multiplier applied after time decay
 - **Slider:** Proportional to proximity to correct answer
@@ -118,57 +123,26 @@ Each player gets a fun random horse name (e.g. "Galloping Gary", "Turbo Nugget")
 
 ## Project structure
 
+The codebase is organised **domain/feature-first**. `app/` is routing only;
+each product domain lives under `features/<name>/` behind an `index.ts`
+public API.
+
 ```
-app/
-  page.tsx                          # Landing page
-  layout.tsx                        # Root layout with Plus Jakarta Sans
-  host/
-    new/page.tsx                    # Quiz creation
-    [roomCode]/
-      page.tsx                      # Host control panel (game loop)
-      leaderboard/page.tsx          # Standalone leaderboard projection
-  play/
-    [roomCode]/page.tsx             # Player join + play
-
-components/
-  host/
-    QuestionDisplay.tsx             # Big screen question display
-    AnswerDistribution.tsx          # Post-question answer chart
-    Lobby.tsx                       # Waiting room with QR code
-    QuestionEditor.tsx              # Question creation form
-  player/
-    AnswerButtons.tsx               # Mobile answer buttons
-    WaitingScreen.tsx               # Lobby/waiting states
-    PointsFlash.tsx                 # Points earned animation
-  shared/
-    Button.tsx                      # Reusable button with variants
-    TimerBar.tsx                    # Animated countdown bar
-    QRCodeDisplay.tsx               # QR code renderer
-    AnimatedContainer.tsx           # Fade-in wrapper
-  leaderboard/
-    HorseRace.tsx                   # Horse race visualization
-    RankedList.tsx                  # Classic ranked list
-
-lib/
-  supabase.ts                       # Supabase client + helpers
-  realtime.ts                       # Realtime hooks (channel, timer, subscriptions)
-  scoring.ts                        # Scoring calculations
-  horses.ts                         # Horse name generator
-
-types/
-  quiz.ts                           # All TypeScript types
-
-supabase/
-  migrations/
-    001_initial.sql                 # Database schema
-    002_quiz_management.sql         # Quiz templates + question bank
-    003_blur_column.sql             # Image blur toggle
-
-__tests__/
-  scoring.test.ts                   # Unit tests for scoring logic
-  horses.test.ts                    # Unit tests for horse name generator
-  supabase.test.ts                  # Unit tests for room code generation
+app/                    # Next.js routing — thin wrappers that render a feature route
+features/               # one folder per domain (each with an index.ts public API)
+  ai-question-generation/  host-dashboard/  leaderboard/  live-room/
+  media/  player-experience/  quiz-authoring/  realtime/  scoring/  session-results/
+integrations/supabase/  # external clients (no domain logic)
+shared/                 # domain kernel types, ui primitives, hooks, utils
+supabase/migrations/    # SQL schema
+docs/                   # architecture, contracts, ADRs
+scripts/check-boundaries.mjs  # enforces import boundaries (npm run lint:boundaries)
 ```
+
+See [`docs/architecture/project-structure.md`](docs/architecture/project-structure.md)
+for the full layout and [`docs/architecture/boundaries.md`](docs/architecture/boundaries.md)
+for the import rules. Tests are colocated with the code they cover
+(e.g. `features/scoring/__tests__/`).
 
 ## Development
 
@@ -189,12 +163,13 @@ npx tsc --noEmit
 
 ```bash
 npm run lint
+npm run lint:boundaries   # enforces feature/import boundaries (docs/architecture/boundaries.md)
 ```
 
 ## CI
 
 GitHub Actions runs on every push/PR to `main`:
-1. Typecheck + lint + tests
+1. Typecheck + lint + boundary check + tests
 2. Production build
 
 Configure these repository secrets for CI builds:

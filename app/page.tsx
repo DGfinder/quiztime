@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import Button from "@/components/shared/Button";
-import AnimatedContainer from "@/components/shared/AnimatedContainer";
-import { hasHostId } from "@/lib/host";
+import Button from "@/shared/ui/Button";
+import AnimatedContainer from "@/shared/ui/AnimatedContainer";
+import { hasHostId } from "@/shared/hostIdentity";
 
 export default function HomePage() {
   const router = useRouter();
