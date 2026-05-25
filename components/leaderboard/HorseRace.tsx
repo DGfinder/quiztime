@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useReducedMotion } from "@/lib/useReducedMotion";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import type { LeaderboardEntry } from "@/types/quiz";
 import { getTrackPosition } from "@/lib/suspense";
 

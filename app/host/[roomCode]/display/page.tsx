@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useRoomChannel, usePlayersSubscription } from "@/lib/realtime";
-import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
-import RacerAvatar from "@/components/shared/RacerAvatar";
+import QRCodeDisplay from "@/shared/ui/QRCodeDisplay";
+import RacerAvatar from "@/shared/ui/RacerAvatar";
 import EndGame from "@/components/EndGame";
 import type {
   Room,

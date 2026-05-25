@@ -16,7 +16,7 @@ import {
   type QuizTemplate,
   type SessionResult,
 } from "@/lib/quizStorage";
-import { QuizCardSkeleton, StatCardSkeleton } from "@/components/shared/Skeleton";
+import { QuizCardSkeleton, StatCardSkeleton } from "@/shared/ui/Skeleton";
 
 export default function DashboardPage() {
   const router = useRouter();

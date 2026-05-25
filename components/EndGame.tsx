@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useReducedMotion } from "@/lib/useReducedMotion";
-import RacerAvatar from "@/components/shared/RacerAvatar";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
+import RacerAvatar from "@/shared/ui/RacerAvatar";
 import type { LeaderboardEntry } from "@/types/quiz";
 
 interface EndGameProps {

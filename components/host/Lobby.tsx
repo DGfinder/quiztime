@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useReducedMotion } from "@/lib/useReducedMotion";
-import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
-import RacerAvatar from "@/components/shared/RacerAvatar";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
+import QRCodeDisplay from "@/shared/ui/QRCodeDisplay";
+import RacerAvatar from "@/shared/ui/RacerAvatar";
 
 interface LobbyPlayer {
   name: string;

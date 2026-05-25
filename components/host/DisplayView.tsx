@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GameState, Question, Player, LeaderboardEntry, Answer } from '@/types/quiz';
-import QRCodeDisplay from '@/components/shared/QRCodeDisplay';
-import RacerAvatar from '@/components/shared/RacerAvatar';
+import QRCodeDisplay from '@/shared/ui/QRCodeDisplay';
+import RacerAvatar from '@/shared/ui/RacerAvatar';
 import EndGame from '@/components/EndGame';
 
 interface AnswerDistItem {

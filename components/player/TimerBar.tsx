@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useReducedMotion } from "@/lib/useReducedMotion";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 
 interface TimerBarProps {
   timeRemaining: number;

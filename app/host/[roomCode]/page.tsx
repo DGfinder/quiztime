@@ -29,8 +29,8 @@ import type {
   LeaderboardEntry,
 } from "@/types/quiz";
 import Image from "next/image";
-import Button from "@/components/shared/Button";
-import AnimatedContainer from "@/components/shared/AnimatedContainer";
+import Button from "@/shared/ui/Button";
+import AnimatedContainer from "@/shared/ui/AnimatedContainer";
 import AnswerDistribution from "@/components/host/AnswerDistribution";
 import Lobby from "@/components/host/Lobby";
 import SuspenseModal from "@/components/host/SuspenseModal";
@@ -39,7 +39,7 @@ import AudioPlayer from "@/components/host/AudioPlayer";
 import EndGame from "@/components/EndGame";
 import TimerBar from "@/components/player/TimerBar";
 import DisplayView from "@/components/host/DisplayView";
-import RacerAvatar from "@/components/shared/RacerAvatar";
+import RacerAvatar from "@/shared/ui/RacerAvatar";
 
 export default function HostControlPanel() {
   const params = useParams();

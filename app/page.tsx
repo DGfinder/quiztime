@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import Button from "@/components/shared/Button";
-import AnimatedContainer from "@/components/shared/AnimatedContainer";
+import Button from "@/shared/ui/Button";
+import AnimatedContainer from "@/shared/ui/AnimatedContainer";
 import { hasHostId } from "@/lib/host";
 
 export default function HomePage() {

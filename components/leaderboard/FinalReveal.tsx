@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useReducedMotion } from "@/lib/useReducedMotion";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import type { LeaderboardEntry } from "@/types/quiz";
 
 interface FinalRevealProps {

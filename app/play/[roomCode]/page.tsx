@@ -16,8 +16,8 @@ import type {
   AnswerRevealPayload,
 } from "@/types/quiz";
 import Image from "next/image";
-import Button from "@/components/shared/Button";
-import AnimatedContainer from "@/components/shared/AnimatedContainer";
+import Button from "@/shared/ui/Button";
+import AnimatedContainer from "@/shared/ui/AnimatedContainer";
 import TimerBar from "@/components/player/TimerBar";
 import AnswerButtons from "@/components/player/AnswerButtons";
 import WaitingScreen from "@/components/player/WaitingScreen";
