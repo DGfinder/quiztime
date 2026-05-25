@@ -5,6 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchRoomByCode,
+  fetchPlayerInRoom,
+  fetchQuizQuestions,
+  fetchPlayerScore,
+  joinRoom,
+  submitAnswer,
+} from "@/features/player-experience/data/playerRepository";
 import { generateHorseName } from "@/features/player-experience/domain/horses";
 import type { Question, LeaderboardEntry } from "@/shared/domain/types";
 import type {
@@ -152,15 +160,11 @@ export default function PlayPage() {
     let cancelled = false;
 
     async function verifyRoom() {
-      const { data, error } = await supabase
-        .from("qt_rooms")
-        .select("id, status, current_question_index, current_quiz_id")
-        .eq("room_code", roomCode)
-        .single();
+      const data = await fetchRoomByCode(roomCode);
 
       if (cancelled) return;
 
-      if (error || !data) {
+      if (!data) {
         setRoomError("Room not found. Double-check the code and try again.");
         setPhase("join");
         return;
@@ -178,12 +182,7 @@ export default function PlayPage() {
       const stored = loadPlayerData(roomCode);
       if (stored && stored.roomId === data.id) {
         // Verify player still exists in DB
-        const { data: playerRow } = await supabase
-          .from("qt_players")
-          .select("id, name, horse_name, score")
-          .eq("id", stored.playerId)
-          .eq("room_id", data.id)
-          .single();
+        const playerRow = await fetchPlayerInRoom(stored.playerId, data.id);
 
         if (!cancelled && playerRow) {
           setPlayerId(playerRow.id);
@@ -193,19 +192,15 @@ export default function PlayPage() {
 
           // Late-join catch-up: if game is already active, jump to current question
           if (data.status === 'active' && data.current_question_index >= 0 && data.current_quiz_id) {
-            const { data: questions } = await supabase
-              .from('qt_questions')
-              .select('*')
-              .eq('quiz_id', data.current_quiz_id)
-              .order('order_index', { ascending: true });
+            const questions = await fetchQuizQuestions(data.current_quiz_id);
 
-            if (!cancelled && questions && questions.length > 0) {
+            if (!cancelled && questions.length > 0) {
               const idx = data.current_question_index;
               const q = questions[idx];
               if (q) {
-                const safeQ = { ...q };
+                const safeQ: Partial<Question> = { ...q };
                 delete safeQ.correct_answer;
-                setCurrentQuestion(safeQ);
+                setCurrentQuestion(safeQ as Question);
                 setQuestionNumber(idx + 1);
                 setTotalQuestions(questions.length);
                 setTimeLimit(q.time_limit);
@@ -359,14 +354,9 @@ export default function PlayPage() {
   // ── Fetch final score ──────────────────────────────────────────
 
   async function fetchFinalScore(pid: string) {
-    const { data } = await supabase
-      .from("qt_players")
-      .select("score")
-      .eq("id", pid)
-      .single();
-
-    if (data) {
-      setTotalScore(data.score);
+    const score = await fetchPlayerScore(pid);
+    if (score !== null) {
+      setTotalScore(score);
     }
   }
 
@@ -382,24 +372,14 @@ export default function PlayPage() {
     const name = nameInput.trim();
     const horse = generateHorseName();
 
-    const { data, error } = await supabase
-      .from("qt_players")
-      .insert({
-        room_id: roomId,
-        name,
-        horse_name: horse,
-        score: 0,
-      })
-      .select("id")
-      .single();
+    const pid = await joinRoom(roomId, name, horse);
 
-    if (error || !data) {
+    if (!pid) {
       setJoinError("Couldn't grab your seat. Check your connection and try again.");
       setIsJoining(false);
       return;
     }
 
-    const pid = data.id;
     setPlayerId(pid);
     setPlayerName(name);
     setHorseName(horse);
@@ -428,12 +408,7 @@ export default function PlayPage() {
 
     toast(`Answer locked in! ✅`, { duration: 2000 });
 
-    await supabase.from("qt_answers").insert({
-      question_id: currentQuestion.id,
-      player_id: playerId,
-      answer_value: answer,
-      time_taken_ms: taken,
-    });
+    await submitAnswer(currentQuestion.id, playerId, answer, taken);
   }
 
   // ── Render ─────────────────────────────────────────────────────
