@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
-import type { Question } from "@/types/quiz";
+import type { Question } from "@/shared/domain/types";
 
 interface AnswerButtonsProps {
   question: Question;

@@ -3,8 +3,8 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
-import type { LeaderboardEntry } from "@/types/quiz";
-import { getTrackPosition } from "@/features/live-room/domain/suspense";
+import type { LeaderboardEntry } from "@/shared/domain/types";
+import { getTrackPosition } from "../domain/suspense";
 
 interface HorseRaceProps {
   entries: LeaderboardEntry[];

@@ -18,7 +18,7 @@ import {
   calculateTypeInPoints,
   applyJokerMultiplier,
 } from "@/features/scoring";
-import { isInSuspensePhase } from "@/features/live-room/domain/suspense";
+import { isInSuspensePhase } from "@/features/leaderboard";
 import type {
   Room,
   Quiz,
@@ -27,7 +27,7 @@ import type {
   Answer,
   GameState,
   LeaderboardEntry,
-} from "@/types/quiz";
+} from "@/shared/domain/types";
 import Image from "next/image";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";

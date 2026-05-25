@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 interface SuspenseModalProps {
   isOpen: boolean;

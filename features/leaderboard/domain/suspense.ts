@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 /**
  * Returns left% (0–85) based on score for normal mode.

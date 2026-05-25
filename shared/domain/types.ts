@@ -1,3 +1,7 @@
+// Shared domain kernel: the ubiquitous game model spoken by every feature.
+// This module must not depend on any feature (it is the foundation they share),
+// which keeps the feature dependency graph acyclic.
+
 export type QuestionType =
   | "multiple_choice"
   | "true_false"
@@ -75,29 +79,6 @@ export interface Answer {
   time_taken_ms: number;
 }
 
-// Realtime event payloads
-export interface GameStatePayload {
-  state: GameState;
-  current_question_index?: number;
-}
-
-export interface QuestionRevealPayload {
-  question: Question;
-  question_number: number;
-  total_questions: number;
-}
-
-export interface AnswerSubmittedPayload {
-  player_id: string;
-  player_name: string;
-  question_id: string;
-}
-
-export interface TimerTickPayload {
-  time_remaining: number;
-  time_limit: number;
-}
-
 export interface LeaderboardEntry {
   player_id: string;
   player_name: string;
@@ -106,44 +87,4 @@ export interface LeaderboardEntry {
   rank: number;
   avg_time_ms?: number;
   correct_count?: number;
-}
-
-export interface LeaderboardUpdatePayload {
-  leaderboard: LeaderboardEntry[];
-}
-
-export interface PlayerResult {
-  isCorrect: boolean;
-  pointsEarned: number;
-}
-
-export interface AnswerRevealPayload {
-  questionId: string;
-  correctAnswer: string;
-  playerResults: Record<string, PlayerResult>;
-  nextImageUrl?: string | null;
-}
-
-// Form types for creating quizzes
-export interface QuestionFormData {
-  type: QuestionType;
-  question_text: string;
-  options: string[];
-  correct_answer: string;
-  time_limit: number;
-  image_url: string;
-  is_joker: boolean;
-  is_image_blurred?: boolean;
-  slider_min: number;
-  slider_max: number;
-  slider_tolerance?: number;
-  video_url: string;
-  video_start_seconds: number;
-  video_end_seconds: number | null;
-  audio_url: string;
-}
-
-export interface QuizFormData {
-  title: string;
-  questions: QuestionFormData[];
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { QuestionFormData, QuestionType } from "@/types/quiz";
+import type { QuestionFormData } from "../domain/types";
+import type { QuestionType } from "@/shared/domain/types";
 import { ImageUpload } from "@/features/media";
 import { AudioUpload } from "@/features/media";
 import { AudioPlayer } from "@/features/media";

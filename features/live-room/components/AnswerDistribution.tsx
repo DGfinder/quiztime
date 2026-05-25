@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { QuestionType } from "@/types/quiz";
+import type { QuestionType } from "@/shared/domain/types";
 
 interface AnswerCount {
   answer_value: string;

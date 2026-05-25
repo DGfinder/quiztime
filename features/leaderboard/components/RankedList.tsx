@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 interface RankedListProps {
   entries: LeaderboardEntry[];

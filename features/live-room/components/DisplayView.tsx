@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { GameState, Question, Player, LeaderboardEntry, Answer } from '@/types/quiz';
+import type { GameState, Question, Player, LeaderboardEntry, Answer } from '@/shared/domain/types';
 import QRCodeDisplay from '@/shared/ui/QRCodeDisplay';
 import RacerAvatar from '@/shared/ui/RacerAvatar';
 import EndGame from './EndGame';

@@ -14,7 +14,7 @@ import type {
   Question,
   GameState,
   LeaderboardEntry,
-} from "@/types/quiz";
+} from "@/shared/domain/types";
 
 function getPlayerIndex(players: Player[], playerId: string): number {
   const sorted = [...players].sort(

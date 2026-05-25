@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 export interface SessionResult {
   id: string;

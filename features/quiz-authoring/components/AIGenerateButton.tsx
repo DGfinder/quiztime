@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { QuestionType } from "@/types/quiz";
+import type { QuestionType } from "@/shared/domain/types";
 
 interface GeneratedQuestion {
   question: string;

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 interface EndGameProps {
   players: LeaderboardEntry[];

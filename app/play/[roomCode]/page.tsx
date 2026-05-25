@@ -6,15 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateHorseName } from "@/features/player-experience/domain/horses";
+import type { Question, LeaderboardEntry } from "@/shared/domain/types";
 import type {
-  Question,
   GameStatePayload,
   QuestionRevealPayload,
   TimerTickPayload,
   LeaderboardUpdatePayload,
-  LeaderboardEntry,
   AnswerRevealPayload,
-} from "@/types/quiz";
+} from "@/features/realtime";
 import Image from "next/image";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";

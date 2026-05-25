@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 interface FinalRevealProps {
   players: LeaderboardEntry[];

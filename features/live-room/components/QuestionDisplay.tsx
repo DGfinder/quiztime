@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import type { Question } from "@/types/quiz";
+import type { Question } from "@/shared/domain/types";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
 
 interface QuestionDisplayProps {

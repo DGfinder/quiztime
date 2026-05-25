@@ -23,7 +23,7 @@ import {
 import { supabase, generateRoomCode } from "@/integrations/supabase/client";
 import { getHostId } from "@/shared/hostIdentity";
 import { saveQuizTemplate, markTemplateAsRun } from "@/features/quiz-authoring";
-import type { QuestionFormData } from "@/types/quiz";
+import type { QuestionFormData } from "@/features/quiz-authoring";
 import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
 import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
 

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { QuestionFormData } from "@/types/quiz";
+import type { QuestionFormData } from "../domain/types";
 
 // ── Types ──────────────────────────────────────────────────────
 

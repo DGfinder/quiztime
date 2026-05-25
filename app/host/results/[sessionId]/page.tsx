@@ -8,7 +8,7 @@ import {
   type SessionResult,
   type QuestionStat,
 } from "@/features/session-results";
-import type { LeaderboardEntry } from "@/types/quiz";
+import type { LeaderboardEntry } from "@/shared/domain/types";
 
 export default function SessionResultsPage() {
   const params = useParams();

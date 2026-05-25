@@ -3,7 +3,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import type { QuestionFormData, QuestionType } from "@/types/quiz";
+import type { QuestionFormData } from "../domain/types";
+import type { QuestionType } from "@/shared/domain/types";
 
 const questionTypeIcons: Record<QuestionType, string> = {
   multiple_choice: "quiz",

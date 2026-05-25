@@ -27,7 +27,8 @@ import {
   markTemplateAsRun,
   type QuestionBankItem,
 } from "@/features/quiz-authoring";
-import type { QuestionFormData, QuestionType } from "@/types/quiz";
+import type { QuestionFormData } from "@/features/quiz-authoring";
+import type { QuestionType } from "@/shared/domain/types";
 import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
 import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
 
