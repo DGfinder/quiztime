@@ -1,4 +1,4 @@
-import PlayerRoomRoute from "@/features/player-experience/routes/PlayerRoomRoute";
+import { PlayerRoomRoute } from "@/features/player-experience";
 
 export default function Page() {
   return <PlayerRoomRoute />;

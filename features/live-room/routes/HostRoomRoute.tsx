@@ -37,7 +37,7 @@ import SuspenseModal from "@/features/live-room/components/SuspenseModal";
 import { VideoPlayer } from "@/features/media";
 import { AudioPlayer } from "@/features/media";
 import EndGame from "@/features/live-room/components/EndGame";
-import TimerBar from "@/features/player-experience/components/TimerBar";
+import TimerBar from "@/shared/ui/TimerBar";
 import DisplayView from "@/features/live-room/components/DisplayView";
 import RacerAvatar from "@/shared/ui/RacerAvatar";
 

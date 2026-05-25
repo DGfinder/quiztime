@@ -1,4 +1,4 @@
-import SessionResultsRoute from "@/features/session-results/routes/SessionResultsRoute";
+import { SessionResultsRoute } from "@/features/session-results";
 
 export default function Page() {
   return <SessionResultsRoute />;

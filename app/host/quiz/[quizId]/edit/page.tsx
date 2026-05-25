@@ -1,4 +1,4 @@
-import EditQuizRoute from "@/features/quiz-authoring/routes/EditQuizRoute";
+import { EditQuizRoute } from "@/features/quiz-authoring";
 
 export default function Page() {
   return <EditQuizRoute />;
