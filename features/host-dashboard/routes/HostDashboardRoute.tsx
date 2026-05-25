@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { supabase, generateRoomCode } from "@/integrations/supabase/client";
+import { createRoom, createQuiz, insertRoomQuestions } from "@/features/live-room";
 import { getHostId } from "@/shared/hostIdentity";
 import {
   getQuizTemplates,
@@ -12,6 +12,7 @@ import {
   duplicateQuizTemplate,
   loadQuizTemplate,
   markTemplateAsRun,
+  incrementQuestionBankUsage,
   type QuizTemplate,
 } from "@/features/quiz-authoring";
 import {
@@ -66,21 +67,9 @@ export default function DashboardPage() {
           return;
         }
 
-        const roomCode = generateRoomCode();
+        const room = await createRoom(hostId);
 
-        const { data: room, error: roomErr } = await supabase
-          .from("qt_rooms")
-          .insert({ room_code: roomCode, host_id: hostId, status: "lobby" })
-          .select()
-          .single();
-        if (roomErr || !room) throw new Error(roomErr?.message || "Failed to create room.");
-
-        const { data: quiz, error: quizErr } = await supabase
-          .from("qt_quizzes")
-          .insert({ room_id: room.id, title: template.title })
-          .select()
-          .single();
-        if (quizErr || !quiz) throw new Error(quizErr?.message || "Failed to create quiz.");
+        const quiz = await createQuiz(room.id, template.title);
 
         const questionRows = questions.map((q, idx) => ({
           quiz_id: quiz.id,
@@ -101,20 +90,16 @@ export default function DashboardPage() {
           audio_url: q.audio_url,
         }));
 
-        const { error: qErr } = await supabase.from("qt_questions").insert(questionRows);
-        if (qErr) throw new Error(qErr.message);
+        await insertRoomQuestions(questionRows);
 
         // Increment question bank usage
         for (const q of questions) {
-          await supabase
-            .from("qt_question_bank")
-            .update({ times_used: (q.times_used || 0) + 1 })
-            .eq("id", q.id);
+          await incrementQuestionBankUsage(q.id, q.times_used || 0);
         }
 
         await markTemplateAsRun(template.id);
         toast.success(`"${template.title}" — room created! Heading to lobby…`);
-        router.push(`/host/${roomCode}?templateId=${template.id}`);
+        router.push(`/host/${room.room_code}?templateId=${template.id}`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to run quiz.");
         setActionLoading(null);

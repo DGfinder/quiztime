@@ -274,3 +274,49 @@ export async function markTemplateAsRun(templateId: string): Promise<void> {
     })
     .eq("id", templateId);
 }
+
+/** Bump a question bank item's usage counter. */
+export async function incrementQuestionBankUsage(
+  questionId: string,
+  timesUsed: number
+): Promise<void> {
+  await supabase
+    .from("qt_question_bank")
+    .update({ times_used: timesUsed + 1 })
+    .eq("id", questionId);
+}
+
+/** Delete the given question bank items. */
+export async function deleteBankQuestions(ids: string[]): Promise<void> {
+  await supabase.from("qt_question_bank").delete().in("id", ids);
+}
+
+/** Insert question bank items, returning the new ids. Throws on failure. */
+export async function insertBankQuestions(
+  rows: Record<string, unknown>[]
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("qt_question_bank")
+    .insert(rows)
+    .select("id");
+  if (error || !data) throw new Error(error?.message || "Save failed");
+  return (data as { id: string }[]).map((r) => r.id);
+}
+
+/** Update a template's title + question ordering. */
+export async function updateTemplateQuestions(
+  templateId: string,
+  title: string,
+  questionIds: string[],
+  questionOrder: Record<string, number>
+): Promise<void> {
+  await supabase
+    .from("qt_quiz_templates")
+    .update({
+      title,
+      question_ids: questionIds,
+      question_order: questionOrder,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", templateId);
+}

@@ -16,10 +16,19 @@ below are runtime contracts; the schema lives in `supabase/migrations/`.
 | `qt_quiz_templates` | quiz-authoring | saved quizzes; `times_run`, `last_run_at`, `is_draft` |
 | `qt_session_results` | session-results | final leaderboard + per-question stats |
 
-Repositories: `features/quiz-authoring/data/quizTemplateRepository.ts`,
-`features/session-results/data/sessionResultsRepository.ts`. Live-room and
-player still issue Supabase calls from their route components (a known
-follow-up — see below).
+Every table is now reached through a feature repository — no route
+component touches `supabase` for data:
+
+- `features/quiz-authoring/data/quizTemplateRepository.ts` — templates + bank
+- `features/session-results/data/sessionResultsRepository.ts` — session results
+- `features/live-room/data/liveRoomRepository.ts` — rooms, quizzes, questions,
+  players, answers (incl. room/quiz/question creation, exported via the
+  live-room public API for the authoring + dashboard launch flows)
+- `features/player-experience/data/playerRepository.ts` — player join,
+  reconnect, answer submission, final score
+
+Route components import `supabase` directly **only** for realtime channel
+setup (`DisplayRoute`, `LeaderboardRoute`, `PlayerRoomRoute`).
 
 ## Storage buckets
 
@@ -42,10 +51,11 @@ follow-up — see below).
   `NEXT_PUBLIC_SUPABASE_*`).
 - Service-role client: `createServiceClient()` for server routes.
 
-## Known follow-up
+## Verification note
 
-The live-room and player route components still call Supabase inline rather
-than through a repository. Extracting `liveRoomRepository` /
-`playerRepository` is the next data-layer step; it was deferred because the
-realtime gameplay it wraps cannot be runtime-verified without a live
-Supabase project + browser.
+The repository extraction is behavior-preserving (each function reproduces
+its original query 1:1) and is guarded by `tsc` + `next build` + boundary
+checks. The realtime *gameplay* itself still cannot be exercised here
+without a live Supabase project + browser, so the remaining follow-up is
+decomposing the route components' realtime/effect orchestration (not their
+data access, which is now done).

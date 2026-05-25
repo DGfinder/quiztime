@@ -20,11 +20,14 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { supabase, generateRoomCode } from "@/integrations/supabase/client";
+import { createRoom, createQuiz, insertRoomQuestions } from "@/features/live-room";
 import { getHostId } from "@/shared/hostIdentity";
 import {
   loadQuizTemplate,
   markTemplateAsRun,
+  deleteBankQuestions,
+  insertBankQuestions,
+  updateTemplateQuestions,
   type QuestionBankItem,
 } from "@/features/quiz-authoring";
 import type { QuestionFormData } from "@/features/quiz-authoring";
@@ -128,10 +131,7 @@ export default function EditQuizPage() {
         const { template } = await loadQuizTemplate(quizId);
         const oldIds = template.question_ids || [];
         if (oldIds.length > 0) {
-          await supabase
-            .from("qt_question_bank")
-            .delete()
-            .in("id", oldIds);
+          await deleteBankQuestions(oldIds);
         }
 
         const rows = validQuestions.map((q) => ({
@@ -166,28 +166,14 @@ export default function EditQuizPage() {
             q.type === "audio_question" ? q.audio_url || null : null,
         }));
 
-        const { data: inserted, error: qErr } = await supabase
-          .from("qt_question_bank")
-          .insert(rows)
-          .select("id");
+        const newIds = await insertBankQuestions(rows);
 
-        if (qErr || !inserted) throw new Error(qErr?.message || "Save failed");
-
-        const newIds = inserted.map((r: { id: string }) => r.id);
         const order: Record<string, number> = {};
         newIds.forEach((id: string, idx: number) => {
           order[id] = idx;
         });
 
-        await supabase
-          .from("qt_quiz_templates")
-          .update({
-            title: title.trim(),
-            question_ids: newIds,
-            question_order: order,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", quizId);
+        await updateTemplateQuestions(quizId, title.trim(), newIds, order);
 
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
@@ -249,21 +235,8 @@ export default function EditQuizPage() {
         return;
       }
 
-      const roomCode = generateRoomCode();
-
-      const { data: room, error: roomErr } = await supabase
-        .from("qt_rooms")
-        .insert({ room_code: roomCode, host_id: hostId, status: "lobby" })
-        .select()
-        .single();
-      if (roomErr || !room) throw new Error(roomErr?.message || "Failed.");
-
-      const { data: quiz, error: quizErr } = await supabase
-        .from("qt_quizzes")
-        .insert({ room_id: room.id, title: title.trim() })
-        .select()
-        .single();
-      if (quizErr || !quiz) throw new Error(quizErr?.message || "Failed.");
+      const room = await createRoom(hostId);
+      const quiz = await createQuiz(room.id, title.trim());
 
       const questionRows = bankQuestions.map((q, idx) => ({
         quiz_id: quiz.id,
@@ -285,11 +258,11 @@ export default function EditQuizPage() {
         audio_url: q.audio_url,
       }));
 
-      await supabase.from("qt_questions").insert(questionRows);
+      await insertRoomQuestions(questionRows);
       await markTemplateAsRun(quizId);
 
       toast.success("Quiz ready! Heading to lobby…");
-      router.push(`/host/${roomCode}?templateId=${quizId}`);
+      router.push(`/host/${room.room_code}?templateId=${quizId}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to run quiz.";
       setError(msg);

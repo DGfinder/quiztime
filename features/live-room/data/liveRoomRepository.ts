@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, generateRoomCode } from "@/integrations/supabase/client";
 import type { Room, Quiz, Question, Player } from "@/shared/domain/types";
 
 // ── Reads ──────────────────────────────────────────────────────
@@ -243,4 +243,42 @@ export async function resetRoomToLobby(roomId: string): Promise<void> {
     .from("qt_rooms")
     .update({ status: "lobby", current_question_index: -1 })
     .eq("id", roomId);
+}
+
+// ── Launch a room from a quiz ──────────────────────────────────
+
+/** Create a fresh lobby room with a generated join code. Throws on failure. */
+export async function createRoom(
+  hostId: string
+): Promise<{ id: string; room_code: string }> {
+  const room_code = generateRoomCode();
+  const { data, error } = await supabase
+    .from("qt_rooms")
+    .insert({ room_code, host_id: hostId, status: "lobby" })
+    .select()
+    .single();
+  if (error || !data) throw new Error(error?.message || "Failed to create room.");
+  return { id: data.id as string, room_code: data.room_code as string };
+}
+
+/** Create the quiz instance attached to a room. Throws on failure. */
+export async function createQuiz(
+  roomId: string,
+  title: string
+): Promise<{ id: string }> {
+  const { data, error } = await supabase
+    .from("qt_quizzes")
+    .insert({ room_id: roomId, title })
+    .select()
+    .single();
+  if (error || !data) throw new Error(error?.message || "Failed to create quiz.");
+  return { id: data.id as string };
+}
+
+/** Insert the playable questions for a room's quiz. Throws on failure. */
+export async function insertRoomQuestions(
+  rows: Record<string, unknown>[]
+): Promise<void> {
+  const { error } = await supabase.from("qt_questions").insert(rows);
+  if (error) throw new Error(error.message || "Failed to create questions.");
 }

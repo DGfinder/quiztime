@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { supabase, generateRoomCode } from "@/integrations/supabase/client";
+import { createRoom, createQuiz, insertRoomQuestions } from "@/features/live-room";
 import { getHostId } from "@/shared/hostIdentity";
 import { saveQuizTemplate, markTemplateAsRun } from "@/features/quiz-authoring";
 import type { QuestionFormData } from "@/features/quiz-authoring";
@@ -127,7 +127,6 @@ export default function NewQuizPage() {
 
     try {
       const hostId = getHostId();
-      const roomCode = generateRoomCode();
 
       const validQuestions = questions.filter(
         (q) => q.question_text.trim().length > 0
@@ -138,32 +137,8 @@ export default function NewQuizPage() {
       await markTemplateAsRun(templateId);
 
       // Create room + quiz for live game
-      const { data: room, error: roomError } = await supabase
-        .from("qt_rooms")
-        .insert({
-          room_code: roomCode,
-          host_id: hostId,
-          status: "lobby",
-        })
-        .select()
-        .single();
-
-      if (roomError || !room) {
-        throw new Error(roomError?.message || "Failed to create room.");
-      }
-
-      const { data: quiz, error: quizError } = await supabase
-        .from("qt_quizzes")
-        .insert({
-          room_id: room.id,
-          title: title.trim(),
-        })
-        .select()
-        .single();
-
-      if (quizError || !quiz) {
-        throw new Error(quizError?.message || "Failed to create quiz.");
-      }
+      const room = await createRoom(hostId);
+      const quiz = await createQuiz(room.id, title.trim());
 
       const questionRows = validQuestions.map((q, idx) => ({
         quiz_id: quiz.id,
@@ -194,20 +169,12 @@ export default function NewQuizPage() {
         audio_url: q.type === "audio_question" ? q.audio_url || null : null,
       }));
 
-      const { error: questionsError } = await supabase
-        .from("qt_questions")
-        .insert(questionRows);
-
-      if (questionsError) {
-        throw new Error(
-          questionsError.message || "Failed to create questions."
-        );
-      }
+      await insertRoomQuestions(questionRows);
 
       setSaveSuccess(true);
       toast.success(`Quiz "${title}" created! Heading to lobby…`);
       setTimeout(() => {
-        router.push(`/host/${roomCode}?templateId=${templateId}`);
+        router.push(`/host/${room.room_code}?templateId=${templateId}`);
       }, 500);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
