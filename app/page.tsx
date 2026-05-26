@@ -71,7 +71,7 @@ export default function HomePage() {
               onClick={() => router.push("/host/new")}
               className="w-full sm:w-auto"
             >
-              Host a quiz night
+              Host a quiz
             </Button>
             <a
               href="#join"
@@ -130,7 +130,7 @@ export default function HomePage() {
               Features
             </span>
             <h2 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight mt-2">
-              Everything a great quiz night needs
+              Everything a great team quiz needs
             </h2>
           </AnimatedContainer>
 
@@ -161,10 +161,10 @@ export default function HomePage() {
           <AnimatedContainer delay={0.1}>
             <div className="rounded-xl bg-primary p-8 text-center">
               <span className="material-symbols-outlined text-tertiary-fixed-dim text-3xl">mic</span>
-              <h3 className="text-xl font-bold text-on-primary mt-2 mb-1">Host a quiz night</h3>
+              <h3 className="text-xl font-bold text-on-primary mt-2 mb-1">Host a quiz</h3>
               <p className="text-on-primary/60 text-sm mb-6">Create questions, run the show, crown a winner.</p>
               <Button variant="coral" size="lg" className="w-full" onClick={() => router.push("/host/new")}>
-                Host a quiz night
+                Host a quiz
               </Button>
             </div>
           </AnimatedContainer>

@@ -310,7 +310,7 @@ export default function NewQuizPage() {
             ) : isCreating ? (
               "Setting up the room..."
             ) : (
-              "Launch Quiz Night 🎤"
+              "Launch Quiz"
             )}
           </motion.button>
         </div>

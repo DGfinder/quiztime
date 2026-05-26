@@ -213,7 +213,7 @@ export default function Lobby({
               >
                 play_arrow
               </span>
-              {canStart ? "Start the Quiz Night 🎤" : "Waiting for players to join..."}
+              {canStart ? "Start the Quiz" : "Waiting for players to join..."}
             </button>
             <div className="flex items-center justify-center gap-2 text-outline">
               <span className="material-symbols-outlined text-sm">info</span>
