@@ -2,15 +2,41 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
 import { hasHostId } from "@/shared/hostIdentity";
 
+const STEPS = [
+  {
+    icon: "mic",
+    title: "Host creates the quiz",
+    desc: "Pick question types, set timers, add images or video — or let AI generate questions in one click.",
+  },
+  {
+    icon: "qr_code_2",
+    title: "Team joins the room",
+    desc: "Scan the QR code or type the room code on any phone. No app download, no account.",
+  },
+  {
+    icon: "social_leaderboard",
+    title: "Compete live",
+    desc: "Real-time scoring, a horse-race leaderboard everyone can see, and a winner crowned at the end.",
+  },
+];
+
+const FEATURES = [
+  { icon: "bolt", title: "Real-time sync", desc: "Questions appear on every phone the instant you advance. Zero lag." },
+  { icon: "directions_run", title: "Horse-race leaderboard", desc: "Watch the standings gallop across the screen between rounds." },
+  { icon: "smart_toy", title: "AI-generated questions", desc: "Out of ideas? Get quality trivia on any topic in seconds." },
+  { icon: "qr_code_2", title: "QR-code joining", desc: "One scan and players are in. Show the code on your screen — done." },
+  { icon: "style", title: "Joker rounds", desc: "Double-point wildcard questions keep the board shaken up to the end." },
+  { icon: "category", title: "Six question types", desc: "Multiple choice, true/false, slider, type-in, image, video, and audio." },
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [roomCode, setRoomCode] = useState("");
-  const [isReturningHost, setIsReturningHost] = useState(false);
+  const [, setIsReturningHost] = useState(false);
 
   useEffect(() => {
     setIsReturningHost(hasHostId());
@@ -19,122 +45,76 @@ export default function HomePage() {
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     const code = roomCode.trim().toUpperCase();
-    if (code.length >= 4) {
-      router.push(`/play/${code}`);
-    }
+    if (code.length >= 4) router.push(`/play/${code}`);
   };
 
   return (
-    <main className="flex-1 flex flex-col bg-cream">
-      {/* ── Hero ─────────────────────────────── */}
-      <section className="relative overflow-hidden bg-navy px-4 py-16 md:py-24 text-center">
-        {/* Background blobs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-96 h-96 rounded-full bg-coral/20 blur-3xl" />
-          <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full bg-amber/10 blur-3xl" />
-        </div>
-
-        <AnimatedContainer className="relative z-10 max-w-3xl mx-auto">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, type: "spring" }}
-          >
-            <div className="text-5xl mb-4">🎮</div>
-            <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-4 leading-tight">
-              Turn Any Meeting Into{" "}
-              <span className="text-coral">a Game Show</span>
-            </h1>
-            <p className="text-lg md:text-xl text-white/70 font-medium max-w-xl mx-auto mb-8">
-              Real-time pub quizzes your team will actually look forward to.
-              Live scoring, horse race leaderboards, AI questions — no setup needed.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button
-                variant="coral"
-                size="lg"
-                onClick={() => router.push("/host/new")}
-                className="w-full sm:w-auto text-lg px-8"
-              >
-                🎤 Host a Quiz Night
-              </Button>
-              <button
-                onClick={() => {
-                  const el = document.getElementById("join-section");
-                  el?.scrollIntoView({ behavior: "smooth" });
-                }}
-                className="w-full sm:w-auto text-lg px-8 py-4 rounded-2xl border-2 border-white/30 text-white font-bold hover:bg-white/10 transition-colors"
-              >
-                🎟️ Join the Game
-              </button>
-            </div>
-
-            <button
-                onClick={() => router.push("/host/dashboard")}
-                className="mt-6 text-sm font-bold text-white/50 hover:text-white transition-colors flex items-center justify-center gap-1"
-              >
-                Host Dashboard →
-              </button>
-          </motion.div>
-        </AnimatedContainer>
-
-        {/* Social proof */}
-        <AnimatedContainer delay={0.3} className="relative z-10 mt-10">
-          <p className="text-white/40 text-sm font-medium inline-flex items-center gap-2">
-            <span className="text-base">🏢</span>
-            Built for GSFS Tuesday meetings — and any team that deserves better than boring
+    <main className="flex-1 flex flex-col bg-surface text-on-surface">
+      {/* ── Hero ───────────────────────────────────────────── */}
+      <section className="bg-primary px-6 py-20 md:py-28">
+        <AnimatedContainer className="max-w-3xl mx-auto text-center">
+          <span className="inline-block text-xs font-bold uppercase tracking-[0.2em] text-primary-fixed-dim mb-5">
+            Real-time pub quiz
+          </span>
+          <h1 className="text-4xl md:text-6xl font-extrabold text-on-primary tracking-tight leading-[1.05] mb-5">
+            Turn any meeting into a game show
+          </h1>
+          <p className="text-lg text-on-primary/70 max-w-xl mx-auto mb-9 leading-relaxed">
+            Live scoring, horse-race leaderboards, and AI-generated questions.
+            Your team joins from their phones in seconds — no setup required.
           </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              variant="coral"
+              size="lg"
+              onClick={() => router.push("/host/new")}
+              className="w-full sm:w-auto"
+            >
+              Host a quiz
+            </Button>
+            <a
+              href="#join"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl border border-on-primary/25 text-on-primary font-bold hover:bg-on-primary/10 active:scale-95 transition"
+            >
+              I have a code
+            </a>
+          </div>
+
+          <button
+            onClick={() => router.push("/host/dashboard")}
+            className="mt-7 inline-flex items-center gap-1 text-sm font-semibold text-on-primary/50 hover:text-on-primary transition-colors"
+          >
+            Host dashboard
+            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
         </AnimatedContainer>
       </section>
 
-      {/* ── How It Works ─────────────────────── */}
-      <section className="px-4 py-16 bg-white">
-        <div className="max-w-4xl mx-auto">
+      {/* ── How it works ───────────────────────────────────── */}
+      <section className="px-6 py-20">
+        <div className="max-w-5xl mx-auto">
           <AnimatedContainer className="text-center mb-12">
-            <span className="text-coral font-extrabold text-sm uppercase tracking-widest">
-              How It Works
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary/60">
+              How it works
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-navy mt-2">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight mt-2">
               Three steps to game-show glory
             </h2>
           </AnimatedContainer>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                step: "01",
-                emoji: "🎤",
-                title: "Host creates the quiz",
-                desc: "Pick question types, set timers, add images or video. Or let AI generate questions in one click.",
-                color: "bg-coral/10 border-coral/20",
-                textColor: "text-coral",
-              },
-              {
-                step: "02",
-                emoji: "📱",
-                title: "Team joins the room",
-                desc: "Scan the QR code or type the 4-letter room code on any phone. No app download, no account.",
-                color: "bg-navy/5 border-navy/20",
-                textColor: "text-navy",
-              },
-              {
-                step: "03",
-                emoji: "🏆",
-                title: "Compete live",
-                desc: "Real-time scoring, a horse race leaderboard everyone can see, and a winner crowned at the end.",
-                color: "bg-amber/10 border-amber/20",
-                textColor: "text-amber-600",
-              },
-            ].map((item, i) => (
-              <AnimatedContainer key={item.step} delay={i * 0.15}>
-                <div className={`rounded-3xl border-2 p-8 h-full ${item.color}`}>
-                  <div className="text-4xl mb-4">{item.emoji}</div>
-                  <div className={`text-xs font-extrabold uppercase tracking-widest mb-2 ${item.textColor}`}>
-                    Step {item.step}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {STEPS.map((item, i) => (
+              <AnimatedContainer key={item.title} delay={i * 0.1}>
+                <div className="h-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest p-7">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary-fixed text-on-primary-fixed mb-5">
+                    <span className="material-symbols-outlined">{item.icon}</span>
                   </div>
-                  <h3 className="text-xl font-bold text-navy mb-3">{item.title}</h3>
-                  <p className="text-ink/60 leading-relaxed">{item.desc}</p>
+                  <div className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                    Step {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <h3 className="text-lg font-bold text-primary mb-2">{item.title}</h3>
+                  <p className="text-on-surface-variant leading-relaxed text-sm">{item.desc}</p>
                 </div>
               </AnimatedContainer>
             ))}
@@ -142,57 +122,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Feature Highlights ────────────────── */}
-      <section className="px-4 py-16 bg-cream">
-        <div className="max-w-4xl mx-auto">
+      {/* ── Features ───────────────────────────────────────── */}
+      <section className="px-6 py-20 bg-surface-container-low">
+        <div className="max-w-5xl mx-auto">
           <AnimatedContainer className="text-center mb-12">
-            <span className="text-coral font-extrabold text-sm uppercase tracking-widest">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary/60">
               Features
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-navy mt-2">
-              Everything a great quiz night needs
+            <h2 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight mt-2">
+              Everything a great team quiz needs
             </h2>
           </AnimatedContainer>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              {
-                emoji: "⚡",
-                title: "Real-Time Sync",
-                desc: "Questions appear on every phone the instant you advance. Zero lag, zero waiting.",
-              },
-              {
-                emoji: "🏇",
-                title: "Horse Race Leaderboard",
-                desc: "Watch your team's horses gallop across the screen between rounds. Chaos guaranteed.",
-              },
-              {
-                emoji: "🤖",
-                title: "AI-Generated Questions",
-                desc: "Out of ideas? Hit the AI button and get quality trivia in seconds on any topic.",
-              },
-              {
-                emoji: "📷",
-                title: "QR Code Joining",
-                desc: "One scan and players are in. Show the QR code on your screen — done.",
-              },
-              {
-                emoji: "🃏",
-                title: "Joker Rounds",
-                desc: "Double-point wildcard questions keep the leaderboard shaken up right until the end.",
-              },
-              {
-                emoji: "🎯",
-                title: "Six Question Types",
-                desc: "Multiple choice, true/false, slider, type-in, image, video, and audio rounds.",
-              },
-            ].map((feat, i) => (
-              <AnimatedContainer key={feat.title} delay={i * 0.1}>
-                <div className="bg-white rounded-2xl p-6 flex gap-4 items-start shadow-sm border border-navy/5 h-full">
-                  <div className="text-3xl flex-shrink-0">{feat.emoji}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map((feat, i) => (
+              <AnimatedContainer key={feat.title} delay={i * 0.07}>
+                <div className="h-full rounded-xl bg-surface-container-lowest border border-outline-variant/40 p-6 flex gap-4 items-start">
+                  <span className="material-symbols-outlined text-primary mt-0.5">{feat.icon}</span>
                   <div>
-                    <h3 className="font-bold text-navy mb-1">{feat.title}</h3>
-                    <p className="text-ink/60 text-sm leading-relaxed">{feat.desc}</p>
+                    <h3 className="font-bold text-primary mb-1">{feat.title}</h3>
+                    <p className="text-on-surface-variant text-sm leading-relaxed">{feat.desc}</p>
                   </div>
                 </div>
               </AnimatedContainer>
@@ -201,79 +150,47 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Join / Host CTAs ─────────────────── */}
-      <section
-        id="join-section"
-        className="px-4 py-16 bg-white"
-      >
-        <div className="max-w-md mx-auto space-y-6">
+      {/* ── Join / Host ────────────────────────────────────── */}
+      <section id="join" className="px-6 py-20">
+        <div className="max-w-md mx-auto">
           <AnimatedContainer className="text-center mb-8">
-            <h2 className="text-3xl font-extrabold text-navy">Ready to play?</h2>
-            <p className="text-ink/50 mt-2">Jump in as a host or grab a seat as a player.</p>
+            <h2 className="text-3xl font-extrabold text-primary tracking-tight">Ready to play?</h2>
+            <p className="text-on-surface-variant mt-2">Start as a host or grab a seat as a player.</p>
           </AnimatedContainer>
 
-          {/* Host Card */}
           <AnimatedContainer delay={0.1}>
-            <div className="bg-navy rounded-3xl shadow-lg p-8 text-center">
-              <div className="text-4xl mb-3">🎤</div>
-              <h2 className="text-2xl font-bold text-white mb-2">Host a Quiz Night</h2>
-              <p className="text-white/50 mb-6 text-sm">
-                Create questions, run the show, crown a winner
-              </p>
-              <Button
-                variant="coral"
-                size="lg"
-                className="w-full"
-                onClick={() => router.push("/host/new")}
-              >
-                Host a Quiz Night
+            <div className="rounded-xl bg-primary p-8 text-center">
+              <span className="material-symbols-outlined text-tertiary-fixed-dim text-3xl">mic</span>
+              <h3 className="text-xl font-bold text-on-primary mt-2 mb-1">Host a quiz</h3>
+              <p className="text-on-primary/60 text-sm mb-6">Create questions, run the show, crown a winner.</p>
+              <Button variant="coral" size="lg" className="w-full" onClick={() => router.push("/host/new")}>
+                Host a quiz
               </Button>
-              <button
-                  onClick={() => router.push("/host/dashboard")}
-                  className="w-full mt-3 text-sm font-bold text-white/40 hover:text-white transition-colors flex items-center justify-center gap-1"
-                >
-                  Host Dashboard
-                  <span className="material-symbols-outlined text-[16px]">
-                    arrow_forward
-                  </span>
-                </button>
             </div>
           </AnimatedContainer>
 
-          {/* Divider */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 h-px bg-ink/10" />
-            <span className="text-ink/40 font-medium text-sm uppercase tracking-wide">
-              or
-            </span>
-            <div className="flex-1 h-px bg-ink/10" />
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 h-px bg-outline-variant/50" />
+            <span className="text-on-surface-variant/70 font-semibold text-xs uppercase tracking-widest">or</span>
+            <div className="flex-1 h-px bg-outline-variant/50" />
           </div>
 
-          {/* Join Card */}
           <AnimatedContainer delay={0.2}>
-            <div className="bg-white rounded-3xl shadow-lg border border-navy/5 p-8 text-center">
-              <div className="text-4xl mb-3">🎟️</div>
-              <h2 className="text-2xl font-bold text-navy mb-2">Join the Game</h2>
-              <p className="text-ink/60 mb-6 text-sm">
-                Got a room code? Enter it below and get in the action
-              </p>
-              <form onSubmit={handleJoin} className="space-y-4">
+            <div className="rounded-xl bg-surface-container-lowest border border-outline-variant/40 p-8 text-center">
+              <span className="material-symbols-outlined text-primary text-3xl">confirmation_number</span>
+              <h3 className="text-xl font-bold text-primary mt-2 mb-1">Join the game</h3>
+              <p className="text-on-surface-variant text-sm mb-6">Got a room code? Enter it and get in.</p>
+              <form onSubmit={handleJoin} className="space-y-3">
                 <input
                   type="text"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                   placeholder="ROOM CODE"
                   maxLength={6}
-                  className="w-full text-center text-2xl font-bold tracking-[0.3em] px-6 py-4 rounded-2xl border-2 border-ink/10 focus:border-navy focus:outline-none bg-cream placeholder:text-ink/20"
+                  className="w-full text-center text-2xl font-bold tracking-[0.3em] px-6 py-4 rounded-xl border border-outline-variant/60 focus:border-primary focus:outline-none bg-surface placeholder:text-on-surface-variant/40"
                 />
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  type="submit"
-                  disabled={roomCode.trim().length < 4}
-                >
-                  Join the Game
+                <Button variant="primary" size="lg" className="w-full" type="submit" disabled={roomCode.trim().length < 4}>
+                  Join the game
                 </Button>
               </form>
             </div>
@@ -281,11 +198,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────── */}
-      <footer className="py-8 text-center bg-cream border-t border-navy/5">
-        <p className="text-ink/30 text-sm">
-          No account needed — just create or join 🐎
-        </p>
+      <footer className="py-8 text-center border-t border-outline-variant/40">
+        <p className="text-on-surface-variant/60 text-sm">No account needed — just create or join.</p>
       </footer>
     </main>
   );

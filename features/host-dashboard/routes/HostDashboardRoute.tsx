@@ -197,55 +197,59 @@ export default function DashboardPage() {
           onClick={() => router.push("/host/new")}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
-          className="bg-secondary-container text-white px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0px_10px_20px_rgba(255,107,107,0.2)]"
+          className="bg-secondary-container text-on-secondary-container px-6 py-2.5 rounded-xl font-extrabold text-sm shadow-[0px_10px_20px_rgba(255,107,107,0.2)] flex items-center gap-1.5"
         >
-          🎤 Host a Quiz Night
+          <span className="material-symbols-outlined text-[18px]">add</span>
+          New Quiz
         </motion.button>
       </header>
 
       <main className="max-w-7xl mx-auto px-8 py-8">
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        {/* Stats Bar */}
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 mb-8 grid grid-cols-3 divide-x divide-outline-variant/10">
           {[
             { label: "Quizzes Created", value: totalQuizzes, icon: "quiz" },
             { label: "Games Played", value: totalGames, icon: "sports_esports" },
             { label: "Total Players", value: totalPlayers, icon: "group" },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-surface-container-lowest rounded-xl p-6 border border-outline-variant/10"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <span className="material-symbols-outlined text-outline text-[20px]">
-                  {stat.icon}
-                </span>
+          ].map((stat) => (
+            <div key={stat.label} className="flex items-center gap-3 px-6 py-4">
+              <span className="material-symbols-outlined text-outline">
+                {stat.icon}
+              </span>
+              <div>
+                <p className="text-2xl font-black text-primary leading-none">
+                  {stat.value}
+                </p>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-outline">
                   {stat.label}
                 </span>
               </div>
-              <p className="text-3xl font-black text-primary">{stat.value}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: My Quizzes */}
           <section className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-primary mb-4">My Quizzes</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-bold text-primary">My Quizzes</h2>
+              {templates.length > 0 && (
+                <span className="text-xs font-bold text-outline bg-surface-container px-2 py-0.5 rounded-full">
+                  {templates.length}
+                </span>
+              )}
+            </div>
             {templates.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="bg-surface-container-lowest rounded-2xl border-2 border-dashed border-outline-variant/30 p-12 text-center"
+                className="bg-surface-container-lowest rounded-xl border-2 border-dashed border-outline-variant/30 p-12 text-center"
               >
                 <span className="material-symbols-outlined text-[64px] text-outline/30 mb-4 block">
                   lightbulb
                 </span>
                 <h3 className="text-xl font-bold text-primary mb-2">
-                  Host your first quiz night
+                  Create your first quiz
                 </h3>
                 <p className="text-outline mb-6 max-w-sm mx-auto">
                   Build a quiz with multiple question types, then run it live with your team. It takes about 5 minutes.
@@ -254,9 +258,10 @@ export default function DashboardPage() {
                   onClick={() => router.push("/host/new")}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-secondary-container text-white px-8 py-3 rounded-xl font-extrabold shadow-[0px_10px_20px_rgba(255,107,107,0.2)]"
+                  className="bg-secondary-container text-on-secondary-container px-8 py-3 rounded-xl font-extrabold shadow-[0px_10px_20px_rgba(255,107,107,0.2)] inline-flex items-center gap-1.5"
                 >
-                  🎤 Host a Quiz Night
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  New Quiz
                 </motion.button>
               </motion.div>
             ) : (
@@ -295,18 +300,19 @@ export default function DashboardPage() {
                           <span>Last run: {formatDate(t.last_run_at)}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => handleRunQuiz(t)}
                           disabled={actionLoading === t.id}
-                          className="px-4 py-2 bg-secondary-container text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                          className="px-4 py-2 bg-secondary-container text-on-secondary-container rounded-lg text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50 inline-flex items-center gap-1"
                         >
-                          {actionLoading === t.id ? "..." : "Run"}
+                          <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            play_arrow
+                          </span>
+                          {actionLoading === t.id ? "Starting…" : "Run"}
                         </button>
                         <button
-                          onClick={() =>
-                            router.push(`/host/quiz/${t.id}/edit`)
-                          }
+                          onClick={() => router.push(`/host/quiz/${t.id}/edit`)}
                           className="px-3 py-2 bg-surface-container-high rounded-lg text-xs font-bold text-on-surface-variant hover:bg-surface-container-highest transition-colors"
                         >
                           Edit
@@ -314,16 +320,20 @@ export default function DashboardPage() {
                         <button
                           onClick={() => handleDuplicate(t.id)}
                           disabled={actionLoading === t.id}
-                          className="px-3 py-2 bg-surface-container-high rounded-lg text-xs font-bold text-on-surface-variant hover:bg-surface-container-highest transition-colors disabled:opacity-50"
+                          title="Duplicate"
+                          aria-label="Duplicate quiz"
+                          className="w-9 h-9 grid place-items-center bg-surface-container-high rounded-lg text-on-surface-variant hover:bg-surface-container-highest transition-colors disabled:opacity-50"
                         >
-                          Duplicate
+                          <span className="material-symbols-outlined text-[18px]">content_copy</span>
                         </button>
                         <button
                           onClick={() => handleDelete(t.id)}
                           disabled={actionLoading === t.id}
-                          className="px-3 py-2 bg-error/10 rounded-lg text-xs font-bold text-error hover:bg-error/20 transition-colors disabled:opacity-50"
+                          title="Delete"
+                          aria-label="Delete quiz"
+                          className="w-9 h-9 grid place-items-center bg-error/10 rounded-lg text-error hover:bg-error/20 transition-colors disabled:opacity-50"
                         >
-                          Delete
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                       </div>
                     </motion.div>
