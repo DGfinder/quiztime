@@ -208,7 +208,7 @@ export default function AnswerReveal({
       >
         Total: {totalScore.toLocaleString()} pts
         {questionNumber > totalQuestions / 2 ? (
-          <span className="italic text-ink/30"> · 🔒 Rankings hidden</span>
+          <span className="italic text-ink/30"> · <span className="material-symbols-outlined text-[14px] align-middle">lock</span> Rankings hidden</span>
         ) : (
           playerRank != null && ` · Rank #${playerRank}`
         )}

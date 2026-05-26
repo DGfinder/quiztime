@@ -452,7 +452,7 @@ export default function PlayPage() {
               {roomError && !roomId ? (
                 <div className="w-full max-w-sm text-center space-y-6">
                   <div className="bg-white rounded-3xl shadow-lg p-8">
-                    <div className="text-5xl mb-4">😕</div>
+                    <div className="mb-4"><span className="material-symbols-outlined text-[56px] text-outline">sentiment_dissatisfied</span></div>
                     <h2 className="text-xl font-bold text-navy mb-2">
                       Oops!
                     </h2>
@@ -611,14 +611,14 @@ export default function PlayPage() {
               {currentQuestion.type === "video_question" && (
                 <div className="bg-primary/10 rounded-2xl px-5 py-3 text-center">
                   <span className="text-lg font-bold text-primary">
-                    📺 Watch the screen...
+                    <span className="material-symbols-outlined text-[20px] align-middle mr-1">tv</span>Watch the screen...
                   </span>
                 </div>
               )}
               {currentQuestion.type === "audio_question" && (
                 <div className="bg-tertiary-fixed/20 rounded-2xl px-5 py-3 text-center">
                   <span className="text-lg font-bold text-tertiary-fixed-dim">
-                    🎵 Listen carefully...
+                    <span className="material-symbols-outlined text-[20px] align-middle mr-1">music_note</span>Listen carefully...
                   </span>
                 </div>
               )}
@@ -685,7 +685,7 @@ export default function PlayPage() {
                 </motion.div>
 
                 <p className="text-sm text-ink/40 font-medium">
-                  Everyone watching the big screen 👀
+                  Everyone watching the big screen
                 </p>
 
                 {/* Animated countdown dots */}
@@ -799,7 +799,7 @@ export default function PlayPage() {
                   <>
                     {questionNumber > totalQuestions / 2 ? (
                       <h2 className="text-2xl font-extrabold text-navy">
-                        🔒 Rankings hidden
+                        <span className="material-symbols-outlined text-[18px] align-middle mr-1">lock</span>Rankings hidden
                       </h2>
                     ) : (
                       <h2 className="text-2xl font-extrabold text-navy">

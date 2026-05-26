@@ -14,10 +14,12 @@ interface ButtonProps {
 }
 
 const variants = {
-  primary: "bg-navy text-white hover:bg-navy-light",
-  secondary: "bg-amber text-ink hover:bg-amber/90",
-  coral: "bg-coral text-white hover:bg-coral-light",
-  ghost: "bg-transparent text-navy border-2 border-navy hover:bg-navy/5",
+  primary: "bg-primary text-on-primary hover:bg-primary-container",
+  secondary: "bg-tertiary-fixed-dim text-on-tertiary-fixed hover:opacity-90",
+  coral:
+    "bg-secondary-container text-on-secondary-container shadow-[0px_10px_20px_rgba(255,107,107,0.2)] hover:opacity-90",
+  ghost:
+    "bg-transparent text-on-surface-variant border border-outline-variant hover:bg-surface-container",
 };
 
 const sizes = {
@@ -39,7 +41,7 @@ export default function Button({
       whileHover={disabled ? undefined : { scale: 1.02 }}
       whileTap={disabled ? undefined : { scale: 0.98 }}
       className={`
-        font-bold rounded-2xl transition-colors cursor-pointer
+        font-extrabold rounded-xl transition-colors cursor-pointer
         ${variants[variant]} ${sizes[size]}
         ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         ${className}

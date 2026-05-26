@@ -54,7 +54,7 @@ export default function AIGenerateButton({
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105"
         style={{ backgroundColor: "#8594CD", color: "white" }}
       >
-        <span className="text-base">✨</span>
+        <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
         Generate with AI
       </button>
     );
@@ -87,7 +87,7 @@ export default function AIGenerateButton({
           </>
         ) : (
           <>
-            <span className="text-base">✨</span>
+            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
             Generate
           </>
         )}

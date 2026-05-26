@@ -238,9 +238,10 @@ export default function LeaderboardPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#FFB95F] text-[#653e00] text-center py-2 font-bold text-sm tracking-wider"
+          className="bg-tertiary-fixed-dim text-on-tertiary-fixed-variant text-center py-2 font-bold text-sm tracking-wider flex items-center justify-center gap-1.5"
         >
-          🔀 SUSPENSE MODE
+          <span className="material-symbols-outlined text-[16px]">shuffle</span>
+          SUSPENSE MODE
         </motion.div>
       )}
 

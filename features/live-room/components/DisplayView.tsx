@@ -346,7 +346,7 @@ export default function DisplayView({
           animate={{ opacity: 1, y: 0 }}
           className="text-5xl font-black mb-10"
         >
-          👑 STANDINGS
+          STANDINGS
         </motion.h2>
 
         <div className="w-full max-w-3xl space-y-3">

@@ -368,9 +368,10 @@ export default function DisplayScreen() {
           onClick={() => {
             broadcast("finish_game_request", {});
           }}
-          className="px-4 py-1.5 rounded-xl bg-[#FF6B6B] text-white text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
+          className="px-4 py-1.5 rounded-xl bg-secondary-container text-on-secondary-container text-sm font-bold hover:opacity-90 active:scale-95 transition-all inline-flex items-center gap-1"
         >
-          Finish 🏆
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
+          Finish
         </button>
       )}
 
@@ -511,7 +512,7 @@ export default function DisplayScreen() {
           animate={{ opacity: 1, y: 0 }}
           className="text-5xl font-black mb-10"
         >
-          👑 STANDINGS
+          STANDINGS
         </motion.h2>
 
         <div className="w-full max-w-3xl space-y-3">

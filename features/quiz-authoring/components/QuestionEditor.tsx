@@ -209,7 +209,7 @@ export default function QuestionEditor({
             <div className="mt-4 flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl">
               <div className="flex flex-col flex-1">
                 <span className="text-sm font-bold text-primary flex items-center gap-2">
-                  <span className="text-lg">👁️</span>
+                  <span className="material-symbols-outlined text-[18px]">visibility_off</span>
                   Blur image during question (reveal on answer)
                 </span>
                 <span className="text-[10px] font-medium text-outline mt-0.5">
