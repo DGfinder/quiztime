@@ -114,7 +114,7 @@ export default function Lobby({
             </span>
             <h2 className="text-5xl font-extrabold text-primary tracking-tighter leading-tight">
               Waiting for your <br />
-              squad to saddle up...
+              squad to roll in...
             </h2>
           </div>
 
