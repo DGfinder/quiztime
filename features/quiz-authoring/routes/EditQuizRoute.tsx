@@ -34,6 +34,10 @@ import type { QuestionFormData } from "@/features/quiz-authoring";
 import type { QuestionType } from "@/shared/domain/types";
 import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
 import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
+import {
+  findDuplicateOption,
+  questionTypeHasOptions,
+} from "@/features/quiz-authoring/domain/validation";
 
 function createEmptyQuestion(): QuestionFormData {
   return {
@@ -221,6 +225,17 @@ export default function EditQuizPage() {
   };
 
   const handleRunNow = async () => {
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.question_text.trim() || !questionTypeHasOptions(q.type)) continue;
+      const dup = findDuplicateOption(q.options.slice(0, 4));
+      if (dup) {
+        setError(
+          `Question ${i + 1}: Answer options must be unique — "${dup}" is used more than once.`
+        );
+        return;
+      }
+    }
     setRunLoading(true);
     try {
       // Save first

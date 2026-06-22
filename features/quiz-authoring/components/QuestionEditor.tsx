@@ -19,6 +19,7 @@ import { AudioPlayer } from "@/features/media";
 import { extractVideoId } from "@/features/media";
 import AIGenerateButton from "./AIGenerateButton";
 import DraggableAnswerOption from "./DraggableAnswerOption";
+import { findDuplicateOption } from "../domain/validation";
 
 interface QuestionEditorProps {
   question: QuestionFormData;
@@ -154,6 +155,11 @@ export default function QuestionEditor({
     }
     setAiSuccess(true);
   }
+
+  const duplicateOption = useMemo(
+    () => findDuplicateOption(question.options.slice(0, 4)),
+    [question.options]
+  );
 
   const sliderPercent = useMemo(() => {
     if (question.type !== "slider") return 0;
@@ -307,6 +313,13 @@ export default function QuestionEditor({
             <p className="text-amber-600 text-xs font-bold flex items-center gap-1.5 mb-1">
               <span className="material-symbols-outlined text-sm">warning</span>
               Select the correct answer below
+            </p>
+          )}
+          {duplicateOption && (
+            <p className="text-amber-600 text-xs font-bold flex items-center gap-1.5 mb-1">
+              <span className="material-symbols-outlined text-sm">warning</span>
+              Two answers are the same (&ldquo;{duplicateOption}&rdquo;). Make
+              each option unique so the correct answer isn&rsquo;t ambiguous.
             </p>
           )}
           <DndContext
