@@ -52,6 +52,44 @@ export async function fetchQuizQuestions(quizId: string): Promise<Question[]> {
   return (data as Question[]) ?? [];
 }
 
+// Question shape safe to load on the player client — never includes the
+// correct answer (which would let players cheat).
+export type PublicQuestion = Omit<Question, "correct_answer">;
+
+const PUBLIC_QUESTION_COLUMNS =
+  "id, quiz_id, type, question_text, options, time_limit, points_base, " +
+  "order_index, image_url, is_joker, is_image_blurred, slider_min, " +
+  "slider_max, slider_tolerance, video_url, video_start_seconds, " +
+  "video_end_seconds, audio_url";
+
+/**
+ * Ordered questions for a quiz WITHOUT the correct answer — safe to fetch
+ * directly on the player for the HTTP catch-up fallback.
+ */
+export async function fetchPublicQuizQuestions(
+  quizId: string
+): Promise<PublicQuestion[]> {
+  const { data } = await supabase
+    .from("qt_questions")
+    .select(PUBLIC_QUESTION_COLUMNS)
+    .eq("quiz_id", quizId)
+    .order("order_index", { ascending: true });
+  return (data as unknown as PublicQuestion[]) ?? [];
+}
+
+/** Current live state of a room by id — used by the player's catch-up poll. */
+export async function fetchRoomState(
+  roomId: string
+): Promise<PlayerRoomInfo | null> {
+  const { data, error } = await supabase
+    .from("qt_rooms")
+    .select("id, status, current_question_index, current_quiz_id")
+    .eq("id", roomId)
+    .single();
+  if (error || !data) return null;
+  return data as PlayerRoomInfo;
+}
+
 /** Current score for a player. Returns null if not found. */
 export async function fetchPlayerScore(
   playerId: string

@@ -22,7 +22,7 @@ type ViewMode = "race" | "ranked";
 
 export default function LeaderboardPage() {
   const params = useParams();
-  const roomCode = params.roomCode as string;
+  const roomCode = (params.roomCode as string).toUpperCase();
 
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);

@@ -53,6 +53,8 @@ export default function HorseRace({
     });
 
     if (newOvertakes.size > 0 && !reduced) {
+      // Transient 300ms overtake flash, cleared by the timer below.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOvertaking(newOvertakes);
       const timer = setTimeout(() => setOvertaking(new Set()), 300);
       return () => clearTimeout(timer);

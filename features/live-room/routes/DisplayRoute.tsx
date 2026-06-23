@@ -44,7 +44,7 @@ interface AnswerDistribution {
 
 export default function DisplayScreen() {
   const params = useParams();
-  const roomCode = params.roomCode as string;
+  const roomCode = (params.roomCode as string).toUpperCase();
 
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -64,6 +64,7 @@ export default function DisplayScreen() {
 
   // Ref for currentQuestion so broadcast handlers always see latest value
   const currentQuestionRef = useRef(currentQuestion);
+  // eslint-disable-next-line react-hooks/refs
   currentQuestionRef.current = currentQuestion;
 
   // Fetch room + players on mount
@@ -325,6 +326,7 @@ export default function DisplayScreen() {
       <span className="text-white/30 text-xs font-mono mr-1">{roomCode.toUpperCase()}</span>
 
       {/* Reveal Answer - asks the host page to run scoring + reveal */}
+      {/* eslint-disable-next-line react-hooks/refs */}
       {(gameState === "question_end" || gameState === "question_start") && !correctAnswer && currentQuestionRef.current && (
         <button
           onClick={() => {

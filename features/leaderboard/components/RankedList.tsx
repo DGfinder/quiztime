@@ -40,12 +40,17 @@ export default function RankedList({ entries, isFinal }: RankedListProps) {
   const prevRanksRef = useRef<Record<string, number>>({});
   const rankDeltas = useMemo(() => {
     const deltas: Record<string, number> = {};
+    // Reading the prev-ranks ref here is deliberate: it still holds the
+    // previous render's ranks (the effect below updates it after commit), so
+    // these movement deltas stay correct.
+    /* eslint-disable react-hooks/refs */
     for (const entry of sorted) {
       const prev = prevRanksRef.current[entry.player_id];
       if (prev !== undefined && prev !== entry.rank) {
         deltas[entry.player_id] = prev - entry.rank; // positive = moved up
       }
     }
+    /* eslint-enable react-hooks/refs */
     return deltas;
   }, [sorted]);
 

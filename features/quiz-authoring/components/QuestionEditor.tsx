@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import type { QuestionFormData } from "../domain/types";
 import type { QuestionType } from "@/shared/domain/types";
 import { ImageUpload } from "@/features/media";
@@ -8,6 +18,8 @@ import { AudioUpload } from "@/features/media";
 import { AudioPlayer } from "@/features/media";
 import { extractVideoId } from "@/features/media";
 import AIGenerateButton from "./AIGenerateButton";
+import DraggableAnswerOption from "./DraggableAnswerOption";
+import { findDuplicateOption } from "../domain/validation";
 
 interface QuestionEditorProps {
   question: QuestionFormData;
@@ -51,6 +63,35 @@ export default function QuestionEditor({
     update({ options: next });
   }
 
+  // Rename an option, keeping the "correct answer" pointer attached to it
+  // (correctness is tracked by answer text, so renaming the correct option
+  // must update correct_answer too).
+  function handleOptionTextChange(i: number, oldVal: string, newVal: string) {
+    if (oldVal !== "" && question.correct_answer === oldVal) {
+      update({
+        correct_answer: newVal,
+        options: question.options.map((o, j) => (j === i ? newVal : o)),
+      });
+    } else {
+      updateOption(i, newVal);
+    }
+  }
+
+  // Drag answer X onto answer Y to swap their values. The slots keep their
+  // fixed colour/letter; only the text moves (and the "Correct" marker with
+  // it, since it follows the text).
+  function handleOptionDragEnd(event: DragEndEvent) {
+    setActiveOptionIndex(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = Number(active.id);
+    const to = Number(over.id);
+    if (Number.isNaN(from) || Number.isNaN(to)) return;
+    const next = [...question.options];
+    [next[from], next[to]] = [next[to], next[from]];
+    update({ options: next });
+  }
+
   function switchType(type: QuestionType) {
     const defaults: Partial<QuestionFormData> = { type, correct_answer: "" };
     if (type === "true_false") {
@@ -76,6 +117,16 @@ export default function QuestionEditor({
 
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [aiSuccess, setAiSuccess] = useState(false);
+  const [activeOptionIndex, setActiveOptionIndex] = useState<number | null>(
+    null
+  );
+
+  const optionSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    })
+  );
 
   useEffect(() => {
     if (!aiSuccess) return;
@@ -104,6 +155,11 @@ export default function QuestionEditor({
     }
     setAiSuccess(true);
   }
+
+  const duplicateOption = useMemo(
+    () => findDuplicateOption(question.options.slice(0, 4)),
+    [question.options]
+  );
 
   const sliderPercent = useMemo(() => {
     if (question.type !== "slider") return 0;
@@ -259,58 +315,52 @@ export default function QuestionEditor({
               Select the correct answer below
             </p>
           )}
-          <div className="grid grid-cols-2 gap-4">
-            {question.options.slice(0, 4).map((opt, i) => (
-              <div
-                key={i}
-                className="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex items-center gap-4 group transition-all border-2 border-transparent focus-within:border-primary-fixed"
-              >
-                <div
-                  className={`w-10 h-10 rounded-xl ${answerColors[i]} flex items-center justify-center text-white font-black text-xs shrink-0`}
-                >
-                  {answerLabels[i]}
-                </div>
-                <input
-                  className="flex-1 border-none focus:ring-0 focus:outline-none p-0 font-bold text-primary bg-transparent placeholder:text-outline"
-                  type="text"
+          {duplicateOption && (
+            <p className="text-amber-600 text-xs font-bold flex items-center gap-1.5 mb-1">
+              <span className="material-symbols-outlined text-sm">warning</span>
+              Two answers are the same (&ldquo;{duplicateOption}&rdquo;). Make
+              each option unique so the correct answer isn&rsquo;t ambiguous.
+            </p>
+          )}
+          <DndContext
+            sensors={optionSensors}
+            collisionDetection={closestCenter}
+            onDragStart={(e) => setActiveOptionIndex(Number(e.active.id))}
+            onDragEnd={handleOptionDragEnd}
+            onDragCancel={() => setActiveOptionIndex(null)}
+          >
+            <div className="grid grid-cols-2 gap-4">
+              {question.options.slice(0, 4).map((opt, i) => (
+                <DraggableAnswerOption
+                  key={i}
+                  id={String(i)}
                   value={opt}
-                  onChange={(e) => {
-                    const oldVal = opt;
-                    updateOption(i, e.target.value);
-                    if (question.correct_answer === oldVal) {
-                      update({
-                        correct_answer: e.target.value,
-                        options: question.options.map((o, j) =>
-                          j === i ? e.target.value : o
-                        ),
-                      });
-                    }
-                  }}
-                  placeholder="Add answer..."
+                  color={answerColors[i]}
+                  label={answerLabels[i]}
+                  isCorrect={question.correct_answer === opt && opt !== ""}
+                  radioName={`correct-${index}`}
+                  onChangeValue={(oldVal, newVal) =>
+                    handleOptionTextChange(i, oldVal, newVal)
+                  }
+                  onSelectCorrect={() => update({ correct_answer: opt })}
                 />
-                <label className="relative flex items-center gap-2 cursor-pointer">
-                  <input
-                    className="peer sr-only"
-                    name={`correct-${index}`}
-                    type="radio"
-                    checked={question.correct_answer === opt && opt !== ""}
-                    onChange={() => update({ correct_answer: opt })}
-                  />
-                  <div className="w-6 h-6 rounded-full border-2 border-outline-variant peer-checked:border-emerald-500 peer-checked:bg-emerald-500 transition-all flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[14px] text-white scale-0 peer-checked:scale-100 transition-transform" style={{ fontVariationSettings: "'wght' 700" }}>
-                      check
-                    </span>
+              ))}
+            </div>
+            <DragOverlay>
+              {activeOptionIndex !== null ? (
+                <div className="bg-surface-container-lowest p-5 rounded-xl shadow-2xl flex items-center gap-3 border-2 border-primary-fixed cursor-grabbing">
+                  <div
+                    className={`w-10 h-10 rounded-xl ${answerColors[activeOptionIndex]} flex items-center justify-center text-white font-black text-xs shrink-0`}
+                  >
+                    {answerLabels[activeOptionIndex]}
                   </div>
-                  {question.correct_answer === opt && opt !== "" && (
-                    <span className="text-[10px] font-bold text-emerald-600 whitespace-nowrap flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                      Correct
-                    </span>
-                  )}
-                </label>
-              </div>
-            ))}
-          </div>
+                  <span className="flex-1 font-bold text-primary truncate">
+                    {question.options[activeOptionIndex] || "Empty answer"}
+                  </span>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
           </>
         )}
 

@@ -65,7 +65,9 @@ export default function HostControlPanel() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roomCode = params.roomCode as string;
+  // Uppercase to match the player route (PlayerRoomRoute), so both clients
+  // join the same `room:<code>` realtime channel regardless of URL casing.
+  const roomCode = (params.roomCode as string).toUpperCase();
   const templateId = searchParams.get("templateId");
 
   // View mode toggle: host panel vs display/projector screen

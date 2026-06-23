@@ -42,6 +42,8 @@ export default function Lobby({
     if (players.length > prevCountRef.current) {
       const newPlayer = players[players.length - 1];
       if (newPlayer) {
+        // Transient join toast/pulse, cleared by the timers below.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setJoinedToast(newPlayer.name);
         setCountPulse(true);
         const toastTimer = setTimeout(() => setJoinedToast(null), 1500);
@@ -114,7 +116,7 @@ export default function Lobby({
             </span>
             <h2 className="text-5xl font-extrabold text-primary tracking-tighter leading-tight">
               Waiting for your <br />
-              squad to saddle up...
+              squad to roll in...
             </h2>
           </div>
 

@@ -26,6 +26,10 @@ import { saveQuizTemplate, markTemplateAsRun } from "@/features/quiz-authoring";
 import type { QuestionFormData } from "@/features/quiz-authoring";
 import QuestionEditor from "@/features/quiz-authoring/components/QuestionEditor";
 import SortableQuestionCard from "@/features/quiz-authoring/components/SortableQuestionCard";
+import {
+  findDuplicateOption,
+  questionTypeHasOptions,
+} from "@/features/quiz-authoring/domain/validation";
 
 function createEmptyQuestion(): QuestionFormData {
   return {
@@ -100,6 +104,12 @@ export default function NewQuizPage() {
         !q.correct_answer.trim()
       ) {
         return `Question ${i + 1}: Please select a correct answer.`;
+      }
+      if (questionTypeHasOptions(q.type)) {
+        const dup = findDuplicateOption(q.options.slice(0, 4));
+        if (dup) {
+          return `Question ${i + 1}: Answer options must be unique — "${dup}" is used more than once.`;
+        }
       }
       if (q.type === "true_false" && !q.correct_answer.trim()) {
         return `Question ${i + 1}: Please select True or False.`;

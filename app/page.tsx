@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import AnimatedContainer from "@/shared/ui/AnimatedContainer";
-import { hasHostId } from "@/shared/hostIdentity";
 
 const STEPS = [
   {
@@ -36,11 +35,6 @@ const FEATURES = [
 export default function HomePage() {
   const router = useRouter();
   const [roomCode, setRoomCode] = useState("");
-  const [, setIsReturningHost] = useState(false);
-
-  useEffect(() => {
-    setIsReturningHost(hasHostId());
-  }, []);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
