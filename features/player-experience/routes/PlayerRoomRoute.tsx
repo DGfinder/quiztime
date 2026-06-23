@@ -9,6 +9,8 @@ import {
   fetchRoomByCode,
   fetchPlayerInRoom,
   fetchQuizQuestions,
+  fetchPublicQuizQuestions,
+  fetchRoomState,
   fetchPlayerScore,
   joinRoom,
   submitAnswer,
@@ -154,6 +156,35 @@ export default function PlayPage() {
   // Channel ref to avoid re-subscribing
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  // Highest question index already shown to this player (via realtime OR the
+  // HTTP catch-up poll). Guards against re-showing / double-firing.
+  const lastShownIndexRef = useRef(-1);
+
+  // Transition the player into a question. Shared by the realtime
+  // `question_reveal` handler and the HTTP catch-up poll so both behave
+  // identically. `question` must never carry the correct answer.
+  const showQuestion = useCallback(
+    (
+      question: Question,
+      questionNumber: number,
+      totalQuestions: number
+    ) => {
+      const idx = questionNumber - 1;
+      if (idx <= lastShownIndexRef.current) return;
+      lastShownIndexRef.current = idx;
+      setCurrentQuestion(question);
+      setImageLoaded(false);
+      setQuestionNumber(questionNumber);
+      setTotalQuestions(totalQuestions);
+      setTimeRemaining(question.time_limit);
+      setTimeLimit(question.time_limit);
+      questionStartRef.current = Date.now();
+      setSelectedAnswer(null);
+      setPhase("question");
+    },
+    []
+  );
+
   // ── Verify room exists ──────────────────────────────────────────
 
   useEffect(() => {
@@ -205,6 +236,7 @@ export default function PlayPage() {
                 setTotalQuestions(questions.length);
                 setTimeLimit(q.time_limit);
                 setTimeRemaining(0);
+                lastShownIndexRef.current = idx;
                 setPhase('question');
                 return;
               }
@@ -271,15 +303,11 @@ export default function PlayPage() {
           const p = payload as QuestionRevealPayload;
           const safeQuestion = { ...p.question };
           delete (safeQuestion as Partial<Question>).correct_answer;
-          setCurrentQuestion(safeQuestion as Question);
-          setImageLoaded(false);
-          setQuestionNumber(p.question_number);
-          setTotalQuestions(p.total_questions);
-          setTimeRemaining(safeQuestion.time_limit);
-          setTimeLimit(safeQuestion.time_limit);
-          questionStartRef.current = Date.now();
-          setSelectedAnswer(null);
-          setPhase("question");
+          showQuestion(
+            safeQuestion as Question,
+            p.question_number,
+            p.total_questions
+          );
         })
         .on("broadcast", { event: "timer_tick" }, ({ payload }) => {
           const p = payload as TimerTickPayload;
@@ -334,8 +362,44 @@ export default function PlayPage() {
 
       channelRef.current = channel;
     },
-    [roomCode]
+    [roomCode, showQuestion]
   );
+
+  // ── HTTP catch-up fallback ──────────────────────────────────────
+  // Realtime `question_reveal` is a single fire-and-forget broadcast with no
+  // replay: if the player misses it (subscribe race, a dropped frame, a brief
+  // reconnect) they'd be stuck on "waiting" forever. So we also poll the
+  // room's persisted current_question_index over HTTP and advance from there.
+  // Works even when the WebSocket is unhealthy, and covers fresh late-joins.
+  useEffect(() => {
+    if (!roomId) return;
+    let cancelled = false;
+
+    const sync = async () => {
+      const state = await fetchRoomState(roomId);
+      if (cancelled || !state) return;
+
+      const idx = state.current_question_index;
+      if (
+        state.status === "active" &&
+        state.current_quiz_id &&
+        typeof idx === "number" &&
+        idx > lastShownIndexRef.current
+      ) {
+        const questions = await fetchPublicQuizQuestions(state.current_quiz_id);
+        if (cancelled) return;
+        const q = questions[idx];
+        if (q) showQuestion(q as Question, idx + 1, questions.length);
+      }
+    };
+
+    void sync();
+    const interval = setInterval(() => void sync(), 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [roomId, showQuestion]);
 
   // Set up channel when playerId is available
   useEffect(() => {
