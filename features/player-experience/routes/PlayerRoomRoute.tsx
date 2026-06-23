@@ -291,6 +291,8 @@ export default function PlayPage() {
 
           if (p.state === "finished") {
             setPhase("finished");
+            // Hoisted function declaration; only called from this async handler.
+            // eslint-disable-next-line react-hooks/immutability
             fetchFinalScore(pid);
             toast.success("Game over! Thanks for playing 🐎", { duration: 4000 });
           }

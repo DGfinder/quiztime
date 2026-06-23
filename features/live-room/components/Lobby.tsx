@@ -42,6 +42,8 @@ export default function Lobby({
     if (players.length > prevCountRef.current) {
       const newPlayer = players[players.length - 1];
       if (newPlayer) {
+        // Transient join toast/pulse, cleared by the timers below.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setJoinedToast(newPlayer.name);
         setCountPulse(true);
         const toastTimer = setTimeout(() => setJoinedToast(null), 1500);

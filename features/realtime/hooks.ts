@@ -97,6 +97,9 @@ export function useAnswersSubscription(
   onAnswer: (answer: Record<string, unknown>) => void
 ) {
   const onAnswerRef = useRef(onAnswer);
+  // Keep the latest callback in a ref so the long-lived channel subscription
+  // (below) always invokes the current one without re-subscribing.
+  // eslint-disable-next-line react-hooks/refs
   onAnswerRef.current = onAnswer;
 
   useEffect(() => {
@@ -144,9 +147,13 @@ export function useTimer(
 ) {
   const [timeRemaining, setTimeRemaining] = useState(durationSeconds);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Keep the latest callbacks in refs so the interval (below) always invokes
+  // the current ones without being torn down and recreated each render.
   const onTickRef = useRef(onTick);
+  // eslint-disable-next-line react-hooks/refs
   onTickRef.current = onTick;
   const onCompleteRef = useRef(onComplete);
+  // eslint-disable-next-line react-hooks/refs
   onCompleteRef.current = onComplete;
 
   // Only reset when timer transitions from stopped→running (not when durationSeconds changes mid-tick)

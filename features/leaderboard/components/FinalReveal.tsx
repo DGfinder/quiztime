@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import type { LeaderboardEntry } from "@/shared/domain/types";
@@ -17,17 +17,24 @@ const rankColors: Record<number, string> = {
 };
 
 function CSSConfettiBurst() {
-  const colors = ["#FF6B6B", "#FFB95F", "#60a5fa", "#22c55e", "#a78bfa", "#f472b6"];
-  const particles = Array.from({ length: 60 }, (_, i) => ({
-    id: i,
-    x: (Math.random() - 0.5) * 100,
-    y: -(Math.random() * 80 + 20),
-    rotate: Math.random() * 720 - 360,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    delay: Math.random() * 0.6,
-    size: Math.random() * 8 + 4,
-    shape: Math.random() > 0.5 ? "circle" : "rect",
-  }));
+  // Randomised once on mount — memoising keeps the particles stable so the CSS
+  // burst animation isn't re-triggered on every render. The Math.random() calls
+  // are intentionally non-deterministic decoration, hence the purity opt-out.
+  const particles = useMemo(() => {
+    const colors = ["#FF6B6B", "#FFB95F", "#60a5fa", "#22c55e", "#a78bfa", "#f472b6"];
+    /* eslint-disable react-hooks/purity */
+    return Array.from({ length: 60 }, (_, i) => ({
+      id: i,
+      x: (Math.random() - 0.5) * 100,
+      y: -(Math.random() * 80 + 20),
+      rotate: Math.random() * 720 - 360,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      delay: Math.random() * 0.6,
+      size: Math.random() * 8 + 4,
+      shape: Math.random() > 0.5 ? "circle" : "rect",
+    }));
+    /* eslint-enable react-hooks/purity */
+  }, []);
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
@@ -157,8 +164,10 @@ export default function FinalReveal({
         ? "3rd"
         : `${nextRank}th`;
 
-    // Show drumroll text
+    // Show drumroll text. Driving this transient reveal animation from the
+    // effect is intentional; the cascade is bounded by the setTimeout below.
     if (!reduced) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDrumrollText(`🥁 And in ${suffix} place...`);
       setShowDrumroll(true);
     }
